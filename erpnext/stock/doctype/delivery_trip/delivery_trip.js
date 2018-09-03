@@ -70,7 +70,7 @@ frappe.ui.form.on('Delivery Trip', {
 			freeze: true,
 			freeze_message: __("Updating estimated arrival times."),
 			args: {
-				name: frm.doc.name,
+				delivery_trip: frm.doc.name,
 			},
 			callback: function (r) {
 				frm.reload_doc();
@@ -84,7 +84,7 @@ frappe.ui.form.on('Delivery Trip', {
 			freeze: true,
 			freeze_message: __("Optimizing routes."),
 			args: {
-				name: frm.doc.name,
+				delivery_trip: frm.doc.name,
 			},
 			callback: function (r) {
 				frm.reload_doc();
