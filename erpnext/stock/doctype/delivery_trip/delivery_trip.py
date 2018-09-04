@@ -16,8 +16,18 @@ from frappe.utils.user import get_user_fullname
 
 class DeliveryTrip(Document):
 	def rearrange_stops(self, optimized_order, start):
+		"""
+		Re-arrange delivery stops based on order optimized
+		for vehicle routing problems.
+
+		Args:
+			optimized_order [list]: The index-based optimized order of the route
+			start [int]: The index at which to start the rearrangement
+		"""
+
 		stops_order = []
 
+		# Child table idx starts at 1
 		for new_idx, old_idx in enumerate(optimized_order, 1):
 			new_idx = start + new_idx
 			old_idx = start + old_idx
@@ -109,20 +119,25 @@ def get_arrival_times(delivery_trip):
 
 
 def process_route(delivery_trip, optimize):
-	settings = frappe.get_single("Google Maps Settings")
-	gmaps_client = settings.get_client()
+	"""
+	Estimate the arrival times for each stop in the Delivery Trip.
+	If `optimize` is True, the stops will be re-arranged, based
+	on the optimized order, before estimating the arrival times.
+
+	Args:
+		delivery_trip [str]: Name of the Delivery Trip document
+		optimize [bool]: True if route needs to be optimized, else False
+	"""
 
 	delivery_trip = frappe.get_doc("Delivery Trip", delivery_trip)
-	home_address = get_address_display(frappe.get_doc("Address", settings.home_address).as_dict())
 
-	route_list = form_route_list(delivery_trip, home_address, optimize)
+	departure_datetime = get_datetime(delivery_trip.departure_time)
+	route_list = form_route_list(delivery_trip, optimize)
 
-	# Cannot add datetime.date to datetime.timedelta
-	departure_datetime = get_datetime(delivery_trip.date) + delivery_trip.departure_time
-
+	# For locks, maintain idx count while looping through route list
 	idx = 0
 	for route in route_list:
-		directions = get_directions(gmaps_client, departure_datetime, route, optimize)
+		directions = get_directions(route, departure_datetime, optimize)
 
 		if directions:
 			if optimize and len(directions.get("waypoint_order")) > 1:
@@ -140,13 +155,31 @@ def process_route(delivery_trip, optimize):
 
 				departure_datetime = estimated_arrival
 				idx += 1
+		else:
+			idx += len(route) - 1
 
 	delivery_trip.save()
 
 
-def form_route_list(delivery_trip, origin, optimize):
+def form_route_list(delivery_trip, optimize):
+	"""
+	Form a list of routes based on the delivery stops. If locks are
+	present, and the routes need to be optimized, then they will be
+	split into sublists at the specified lock position(s).
+
+	Args:
+		delivery_trip [object]: The Delivery Trip object
+		optimize [bool]: True if route needs to be optimized, else False
+
+	Returns:
+		[list]: List of routes split at locks, if optimize is True
+	"""
+
+	settings = frappe.get_single("Google Maps Settings")
+	home_address = get_address_display(frappe.get_doc("Address", settings.home_address).as_dict())
+
 	route_list = []
-	leg = [origin]
+	leg = [home_address]
 
 	for waypoint in delivery_trip.delivery_stops:
 		leg.append(waypoint.customer_address)
@@ -156,13 +189,30 @@ def form_route_list(delivery_trip, origin, optimize):
 			leg = [waypoint.customer_address]
 
 	if len(leg) > 1:
-		leg.append(origin)
+		leg.append(home_address)
 		route_list.append(leg)
 
 	return route_list
 
 
-def get_directions(client, departure_time, route, optimize):
+def get_directions(route, departure_time, optimize):
+	"""
+	Retrieve map directions for a given route and departure time.
+	If optimize is true, Google Maps will return an optimized
+	order for the intermediate waypoints.
+
+	Args:
+		departure_time [object]: Departure time for the route (datetime.datetime)
+		route [list of str]: Route addresses (origin -> waypoint(s), if any -> destination)
+		optimize [bool]: True if route needs to be optimized, else False
+
+	Returns:
+		[dict]: Route legs and, if `optimize` is True, optimized waypoint order
+	"""
+
+	settings = frappe.get_single("Google Maps Settings")
+	maps_client = settings.get_client()
+
 	directions_data = {
 		"origin": route[0],
 		"destination": route[-1],
@@ -171,10 +221,10 @@ def get_directions(client, departure_time, route, optimize):
 		"departure_time": departure_time
 	}
 
-	# try:
-	directions = client.directions(**directions_data)
-	# except Exception as e:
-	# 	frappe.throw(_(e.message))
+	try:
+		directions = maps_client.directions(**directions_data)
+	except Exception as e:
+		frappe.throw(_(e.message))
 
 	return directions[0] if directions else False
 
