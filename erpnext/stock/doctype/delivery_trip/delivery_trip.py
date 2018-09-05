@@ -15,13 +15,48 @@ from frappe.utils.user import get_user_fullname
 
 
 class DeliveryTrip(Document):
+	def form_route_list(self, optimize):
+		"""
+		Form a list of address routes based on the delivery stops. If locks
+		are present, and the routes need to be optimized, then they will be
+		split into sublists at the specified lock position(s).
+
+		Args:
+			optimize [bool]: True if route needs to be optimized, else False
+
+		Returns:
+			[list of list of str]: List of address routes split at locks, if optimize is True
+		"""
+
+		settings = frappe.get_single("Google Maps Settings")
+		home_address = get_address_display(frappe.get_doc("Address", settings.home_address).as_dict())
+
+		route_list = []
+		# Initialize first leg with origin as the home address
+		leg = [home_address]
+
+		for stop in self.delivery_stops:
+			leg.append(stop.customer_address)
+
+			if optimize and stop.lock:
+				route_list.append(leg)
+				leg = [stop.customer_address]
+
+		# For last leg, append home address as the destination
+		# only if lock isn"t on the final stop
+		if len(leg) > 1:
+			leg.append(home_address)
+			route_list.append(leg)
+
+		return route_list
+
 	def rearrange_stops(self, optimized_order, start):
 		"""
 		Re-arrange delivery stops based on order optimized
 		for vehicle routing problems.
 
 		Args:
-			optimized_order [list]: The index-based optimized order of the route
+			optimized_order [list of int]: The index-based optimized order of the route
 			start [int]: The index at which to start the rearrangement
 		"""
 
@@ -38,28 +73,35 @@ class DeliveryTrip(Document):
 		self.delivery_stops[start:start + len(stops_order)] = stops_order
 
 
+@frappe.whitelist()
+def get_contact_and_address(name):
+	out = frappe._dict()
+	get_default_contact(out, name)
+	get_default_address(out, name)
+	return out
+
+
 def get_default_contact(out, name):
 	contact_persons = frappe.db.sql(
 			"""
 			select parent,
-				(select is_primary_contact from tabContact c where c.name = dl.parent)
-				as is_primary_contact
+				(select is_primary_contact from tabContact c where c.name = dl.parent) as is_primary_contact
 			from
 				`tabDynamic Link` dl
 			where
-				dl.link_doctype="Customer" and
-				dl.link_name=%s and
-				dl.parenttype = 'Contact'
+				dl.link_doctype="Customer"
+				and dl.link_name=%s
+				and dl.parenttype = "Contact"
 		""", (name), as_dict=1)
 
 	if contact_persons:
 		for out.contact_person in contact_persons:
 			if out.contact_person.is_primary_contact:
 				return out.contact_person
+
 		out.contact_person = contact_persons[0]
+
 		return out.contact_person
-	else:
-		return None
 
 
 def get_default_address(out, name):
@@ -67,28 +109,22 @@ def get_default_address(out, name):
 			"""
 			select parent,
 				(select is_shipping_address from tabAddress a where a.name=dl.parent) as is_shipping_address
-			from `tabDynamic Link` dl
-			where link_doctype="Customer"
-				and link_name=%s
-				and parenttype = 'Address'
+			from
+				`tabDynamic Link` dl
+			where
+				dl.link_doctype="Customer"
+				and dl.link_name=%s
+				and dl.parenttype = "Address"
 		""", (name), as_dict=1)
 
 	if shipping_addresses:
 		for out.shipping_address in shipping_addresses:
 			if out.shipping_address.is_shipping_address:
 				return out.shipping_address
+
 		out.shipping_address = shipping_addresses[0]
+
 		return out.shipping_address
-	else:
-		return None
-
-
-@frappe.whitelist()
-def get_contact_and_address(name):
-	out = frappe._dict()
-	get_default_contact(out, name)
-	get_default_address(out, name)
-	return out
 
 
 @frappe.whitelist()
@@ -102,7 +138,7 @@ def get_contact_display(contact):
 		"first_name": contact_info.first_name,
 		"last_name": contact_info.last_name or "",
 		"phone": contact_info.phone or "",
-		"mobile_no": contact_info.mobile_no or "",
+		"mobile_no": contact_info.mobile_no or ""
 	}
 
 	return contact_info.html
@@ -132,7 +168,7 @@ def process_route(delivery_trip, optimize):
 	delivery_trip = frappe.get_doc("Delivery Trip", delivery_trip)
 
 	departure_datetime = get_datetime(delivery_trip.departure_time)
-	route_list = form_route_list(delivery_trip, optimize)
+	route_list = delivery_trip.form_route_list(optimize)
 
 	# For locks, maintain idx count while looping through route list
 	idx = 0
@@ -159,40 +195,6 @@ def process_route(delivery_trip, optimize):
 			idx += len(route) - 1
 
 	delivery_trip.save()
-
-
-def form_route_list(delivery_trip, optimize):
-	"""
-	Form a list of routes based on the delivery stops. If locks are
-	present, and the routes need to be optimized, then they will be
-	split into sublists at the specified lock position(s).
-
-	Args:
-		delivery_trip [object]: The Delivery Trip object
-		optimize [bool]: True if route needs to be optimized, else False
-
-	Returns:
-		[list]: List of routes split at locks, if optimize is True
-	"""
-
-	settings = frappe.get_single("Google Maps Settings")
-	home_address = get_address_display(frappe.get_doc("Address", settings.home_address).as_dict())
-
-	route_list = []
-	leg = [home_address]
-
-	for waypoint in delivery_trip.delivery_stops:
-		leg.append(waypoint.customer_address)
-
-		if optimize and waypoint.lock:
-			route_list.append(leg)
-			leg = [waypoint.customer_address]
-
-	if len(leg) > 1:
-		leg.append(home_address)
-		route_list.append(leg)
-
-	return route_list
 
 
 def get_directions(route, departure_time, optimize):
@@ -252,7 +254,7 @@ def notify_customers(docname, date, driver, vehicle, sender_email, delivery_noti
 
 	for delivery_stop in parent_doc.delivery_stops:
 		contact_info = frappe.db.get_value("Contact", delivery_stop.contact,
-											["first_name", "last_name", "email_id", "gender"], as_dict=1)
+			["first_name", "last_name", "email_id", "gender"], as_dict=1)
 
 		args.update(delivery_stop.as_dict())
 		args.update(contact_info)
@@ -260,9 +262,9 @@ def notify_customers(docname, date, driver, vehicle, sender_email, delivery_noti
 		if delivery_stop.delivery_note:
 			default_print_format = frappe.get_meta('Delivery Note').default_print_format
 			attachments = frappe.attach_print('Delivery Note',
-												delivery_stop.delivery_note,
-												file_name="Delivery Note",
-												print_format=default_print_format or "Standard")
+				delivery_stop.delivery_note,
+				file_name="Delivery Note",
+				print_format=default_print_format or "Standard")
 
 		if not delivery_stop.notified_by_email and contact_info.email_id:
 			driver_info = frappe.db.get_value("Driver", driver, ["full_name", "cell_number"], as_dict=1)
@@ -278,7 +280,7 @@ def notify_customers(docname, date, driver, vehicle, sender_email, delivery_noti
 				message=message,
 				attachments=attachments,
 				subject=_(email_template.subject).format(getdate(date).strftime('%d.%m.%y'),
-														estimated_arrival))
+					estimated_arrival))
 
 			frappe.db.set_value("Delivery Stop", delivery_stop.name, "notified_by_email", 1)
 			frappe.db.set_value("Delivery Stop", delivery_stop.name,"email_sent_to", contact_info.email_id)
