@@ -322,8 +322,9 @@ def notify_customers(delivery_trip):
 	delivery_trip = frappe.get_doc("Delivery Trip", delivery_trip)
 
 	args = delivery_trip.as_dict()
-	args.update(frappe.db.get_value("Driver", delivery_trip.driver, ["full_name", "cell_number"], as_dict=1))
-	args.update(frappe.db.get_value("Vehicle", delivery_trip.vehicle, "license_plate", as_dict=1))
+
+	if delivery_trip.driver:
+		args.update(frappe.db.get_value("Driver", delivery_trip.driver, "cell_number", as_dict=1))
 
 	email_recipients = []
 
