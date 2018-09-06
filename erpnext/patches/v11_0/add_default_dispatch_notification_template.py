@@ -6,6 +6,7 @@ from frappe import _
 
 def execute():
 	frappe.reload_doc("email", "doctype", "email_template")
+	frappe.reload_doc("stock", "doctype", "delivery_settings")
 
 	if not frappe.db.exists("Email Template", _("Dispatch Notification")):
 		base_path = frappe.get_app_path("erpnext", "stock", "doctype")
