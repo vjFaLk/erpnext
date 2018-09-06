@@ -245,48 +245,6 @@ def get_rounded_time(arrival_datetime):
 
 
 @frappe.whitelist()
-<<<<<<< HEAD
-def notify_customers(docname, date, driver, vehicle, sender_email, delivery_notification):
-	sender_name = get_user_fullname(sender_email)
-	attachments = []
-
-	parent_doc = frappe.get_doc('Delivery Trip', docname)
-	args = parent_doc.as_dict()
-
-	for delivery_stop in parent_doc.delivery_stops:
-		contact_info = frappe.db.get_value("Contact", delivery_stop.contact,
-			["first_name", "last_name", "email_id", "gender"], as_dict=1)
-
-		args.update(delivery_stop.as_dict())
-		args.update(contact_info)
-
-		if delivery_stop.delivery_note:
-			default_print_format = frappe.get_meta('Delivery Note').default_print_format
-			attachments = frappe.attach_print('Delivery Note',
-				delivery_stop.delivery_note,
-				file_name="Delivery Note",
-				print_format=default_print_format or "Standard")
-
-		if not delivery_stop.notified_by_email and contact_info.email_id:
-			driver_info = frappe.db.get_value("Driver", driver, ["full_name", "cell_number"], as_dict=1)
-			sender_designation = frappe.db.get_value("Employee", sender_email, ["designation"])
-
-			estimated_arrival = cstr(delivery_stop.estimated_arrival)[:-3]
-			email_template = frappe.get_doc("Email Template", delivery_notification)
-			message = frappe.render_template(email_template.response, args)
-
-			frappe.sendmail(
-				recipients=contact_info.email_id,
-				sender=sender_email,
-				message=message,
-				attachments=attachments,
-				subject=_(email_template.subject).format(getdate(date).strftime('%d.%m.%y'),
-					estimated_arrival))
-
-			frappe.db.set_value("Delivery Stop", delivery_stop.name, "notified_by_email", 1)
-			frappe.db.set_value("Delivery Stop", delivery_stop.name,"email_sent_to", contact_info.email_id)
-			frappe.msgprint(_("Email sent to {0}").format(contact_info.email_id))
-=======
 def notify_customers(delivery_trip):
 	delivery_trip = frappe.get_doc("Delivery Trip", delivery_trip)
 
@@ -334,4 +292,3 @@ def get_attachments(delivery_stop):
 										print_format=dispatch_attachment)
 
 	return [attachments]
->>>>>>> Add Delivery Settings + improve 'Notify Customers' functionality
