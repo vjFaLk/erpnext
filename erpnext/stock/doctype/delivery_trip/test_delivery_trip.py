@@ -23,23 +23,22 @@ class TestDeliveryTrip(unittest.TestCase):
 		contact = get_contact_and_address("_Test Customer")
 
 		if not frappe.db.exists("Delivery Trip", "TOUR-00000"):
-			delivery_trip = frappe.new_doc("Delivery Trip")
-			delivery_trip.company = erpnext.get_default_company()
-			delivery_trip.date = add_days(nowdate(), 5)
-			delivery_trip.driver = "DRIVER-00001"
-			delivery_trip.vehicle = "JB 007"
-
-			delivery_trip.append("delivery_stops", {
-				"customer": "_Test Customer",
-				"address": contact.shipping_address.parent,
-				"contact": contact.contact_person.parent
+			delivery_trip = frappe.get_doc({
+				"doctype": "Delivery Trip",
+				"company": erpnext.get_default_company(),
+				"departure_time": add_days(nowdate(), 5),
+				"driver": "DRIVER-00001",
+				"vehicle": "JB 007",
+				"delivery_stops": [{
+					"customer": "_Test Customer",
+					"address": contact.shipping_address.parent,
+					"contact": contact.contact_person.parent
+				}]
 			})
-
 			delivery_trip.insert()
+
 			notify_customers(delivery_trip=delivery_trip.name)
-
 			self.assertEqual(delivery_trip.email_notification_sent, 1)
-
 
 
 def create_driver():
@@ -66,7 +65,6 @@ def create_delivery_notification():
 
 	delivery_settings = frappe.get_single("Delivery Settings")
 	delivery_settings.dispatch_template = 'Delivery Notification'
-
 
 
 def create_vehicle():
