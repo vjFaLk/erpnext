@@ -10,7 +10,7 @@ import frappe
 from frappe import _
 from frappe.contacts.doctype.address.address import get_address_display
 from frappe.model.document import Document
-from frappe.utils import cstr, get_datetime, get_link_to_form, getdate
+from frappe.utils import cint, cstr, get_datetime, get_link_to_form, getdate
 from frappe.utils.user import get_user_fullname
 
 
@@ -86,8 +86,8 @@ class DeliveryTrip(Document):
 					estimated_arrival = departure_datetime + datetime.timedelta(seconds=duration)
 					self.delivery_stops[idx].estimated_arrival = estimated_arrival
 
-					stop_delay = frappe.db.get_value("Delivery Settings", "stop_delay")
-					departure_datetime = estimated_arrival + stop_delay
+					stop_delay = frappe.db.get_single_value("Delivery Settings", "stop_delay")
+					departure_datetime = estimated_arrival + datetime.timedelta(minutes=cint(stop_delay))
 					idx += 1
 			else:
 				idx += len(route) - 1
