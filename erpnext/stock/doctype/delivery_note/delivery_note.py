@@ -19,6 +19,8 @@ from frappe.model.mapper import get_mapped_doc
 from frappe.model.utils import get_fetch_values
 from frappe.utils import cint, flt
 
+from collections import defaultdict
+
 form_grid_templates = {
 	"items": "templates/form_grid/item_grid.html"
 }
@@ -320,14 +322,19 @@ class DeliveryNote(SellingController):
 		self.load_from_db()
 
 	def make_return_invoice(self):
-		try:
+		return_invoices = defaultdict(list)
+
+		for item in self.items:
+			if item.against_sales_invoice:
+				return_invoices[item.against_sales_invoice].append(item.item_code)
+
+		for invoice, items in return_invoices.items():
 			return_invoice = make_sales_invoice(self.name)
 			return_invoice.is_return = True
+			return_invoice.return_against = invoice
+			return_invoice.items = list(filter(lambda x: x.item_code in items, return_invoice.items))
 			return_invoice.save()
 			return_invoice.submit()
-			frappe.msgprint(_("Credit Note {0} has been created automatically").format(return_invoice.name))
-		except:
-			frappe.throw(_("Could not create Credit Note automatically, please uncheck 'Issue Credit Note' and submit again"))
 
 def update_billed_amount_based_on_so(so_detail, update_modified=True):
 	# Billed against Sales Order directly
