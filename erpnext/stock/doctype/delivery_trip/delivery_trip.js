@@ -45,6 +45,9 @@ frappe.ui.form.on('Delivery Trip', {
 			});
 		}
 
+		let wrapper = frm.fields_dict.map_html.$wrapper
+		wrapper.html(frm.doc.map_embed);
+
 		if (frm.doc.docstatus === 0) {
 			frm.add_custom_button(__('Delivery Note'), () => {
 				erpnext.utils.map_current_doc({
