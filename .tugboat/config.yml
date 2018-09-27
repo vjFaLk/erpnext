@@ -1,0 +1,14 @@
+services:
+  python:
+    image: tugboatqa/ubuntu:xenial
+    expose: 8000
+    default: true
+    http: true
+    https: true
+    https_redirect: true
+    commands:
+      init:
+        - ./.tugboat/install.sh
+      build:
+        - cd /home/frappe/frappe-bench
+        - su frappe -c "nohup bench start &"
