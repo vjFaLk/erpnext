@@ -10,4 +10,4 @@ services:
       init:
         - ./.tugboat/install.sh
       build:
-        - su frappe -c "cd /home/frappe/frappe-bench && nohup bench start &"
+        - ./.tugboat/build.sh
