@@ -6,9 +6,15 @@ services:
     http: true
     https: true
     https_redirect: true
+    depends: mariadb
     commands:
       init:
         - ./.tugboat/install.sh
       build:
-        - cd /home/frappe/frappe-bench
-        - su frappe -c "nohup bench start &"
+        - su frappe -c "/home/frappe/frappe-bench && nohup bench start &"
+  mariadb:
+    checkout: true
+    image: tugboatqa/mariadb:10.2
+    commands:
+      init:
+        - cp .tugboat/mysql.conf /etc/mysql/conf.d/mariadb.cnf
