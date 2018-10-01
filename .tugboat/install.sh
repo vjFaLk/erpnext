@@ -36,7 +36,10 @@ cd /home/frappe/
 su frappe -c "bench init frappe-bench --frappe-path https://github.com/digithinkit/frappe.git --frappe-branch bloomstack-staging"
 
 cd /home/frappe/frappe-bench
+su frappe -c "bench config set-common-config -c redis_cache redis://redis:6379"
+su frappe -c "bench config set-common-config -c redis_queue redis://redis:6379"
+su frappe -c "bench config set-common-config -c redis_socketio redis://redis:6379"
 su frappe -c "bench get-app https://github.com/DigiThinkIT/erpnext --branch bloomstack-staging"
 su frappe -c "bench new-site site1.local --mariadb-root-password frappe --admin-password frappe"
 su frappe -c "bench use site1.local"
-su frappe -c "bench install erpnext"
+su frappe -c "bench install-app erpnext"

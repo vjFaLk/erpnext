@@ -6,8 +6,11 @@ services:
     http: true
     https: true
     https_redirect: true
+    depends: redis
     commands:
       init:
         - ./.tugboat/install.sh
       build:
         - ./.tugboat/build.sh
+  redis:
+    image: tugboatqa/redis:4.0.9
