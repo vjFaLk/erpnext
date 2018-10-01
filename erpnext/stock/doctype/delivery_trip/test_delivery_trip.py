@@ -9,7 +9,6 @@ import erpnext
 import frappe
 from erpnext.stock.doctype.delivery_trip.delivery_trip import get_contact_and_address, notify_customers
 from erpnext.tests.utils import create_test_contact_and_address
-from frappe.contacts.doctype.address.address import get_address_display
 from frappe.utils import add_days, nowdate
 
 
@@ -33,14 +32,12 @@ class TestDeliveryTrip(unittest.TestCase):
 				"delivery_stops": [{
 					"customer": "_Test Customer",
 					"address": contact.shipping_address.parent,
-					"contact": contact.contact_person.parent,
-					"customer_address": get_address_display(frappe.get_doc("Address", contact.shipping_address.parent).as_dict())
+					"contact": contact.contact_person.parent
 				}]
 			})
 			delivery_trip.insert()
 
 			notify_customers(delivery_trip=delivery_trip.name)
-			delivery_trip.load_from_db()
 			self.assertEqual(delivery_trip.email_notification_sent, 1)
 
 
