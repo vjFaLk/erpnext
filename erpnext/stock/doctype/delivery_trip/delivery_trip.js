@@ -106,7 +106,7 @@ frappe.ui.form.on('Delivery Trip', {
 
 		frappe.db.get_value("Delivery Settings", { name: "Delivery Settings" }, "dispatch_template", (r) => {
 			if (!r.dispatch_template) {
-				frappe.throw(__("Missing email template for dispatch. Please set one in Delivery Settings."))
+				frappe.throw(__("Missing email template for dispatch. Please set one in Delivery Settings."));
 			} else {
 				frappe.confirm(__("Do you want to notify all the customers by email?"), function () {
 					frappe.call({
