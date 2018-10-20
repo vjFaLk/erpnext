@@ -9,7 +9,7 @@ import erpnext
 import frappe
 from erpnext.stock.doctype.delivery_trip.delivery_trip import get_contact_and_address, notify_customers
 from erpnext.tests.utils import create_test_contact_and_address
-from frappe.utils import add_days, now_datetime, nowdate
+from frappe.utils import add_days, nowtime, nowdate
 
 
 class TestDeliveryTrip(unittest.TestCase):
@@ -18,29 +18,45 @@ class TestDeliveryTrip(unittest.TestCase):
 		create_vehicle()
 		create_delivery_notification()
 		create_test_contact_and_address()
+		self.delivery_trip = create_delivery_trip()
 
-	def test_delivery_trip(self):
-		contact = get_contact_and_address("_Test Customer")
+	def tearDown(self):
+		frappe.db.sql("delete from `tabDriver`")
+		frappe.db.sql("delete from `tabVehicle`")
+		frappe.db.sql("delete from `tabEmail Template`")
+		frappe.db.sql("delete from `tabDelivery Trip`")
 
-		if not frappe.db.exists("Delivery Trip", "TOUR-00000"):
-			delivery_trip = frappe.get_doc({
-				"doctype": "Delivery Trip",
-				"company": erpnext.get_default_company(),
-				"date": add_days(nowdate(), 5),
-				"departure_time": add_days(now_datetime(), 5),
-				"driver": frappe.db.get_value('Driver', {"full_name": "Newton Scmander"}),
-				"vehicle": "JB 007",
-				"delivery_stops": [{
-					"customer": "_Test Customer",
-					"address": contact.shipping_address.parent,
-					"contact": contact.contact_person.parent
-				}]
-			})
-			delivery_trip.insert()
+	def test_delivery_trip_status_draft(self):
+		self.assertEqual(self.delivery_trip.status, "Draft")
 
-			notify_customers(delivery_trip=delivery_trip.name)
-			delivery_trip.load_from_db()
-			self.assertEqual(delivery_trip.email_notification_sent, 1)
+	def test_delivery_trip_status_scheduled(self):
+		self.delivery_trip.submit()
+		self.assertEqual(self.delivery_trip.status, "Scheduled")
+
+	def test_delivery_trip_status_cancelled(self):
+		self.delivery_trip.submit()
+		self.delivery_trip.cancel()
+		self.assertEqual(self.delivery_trip.status, "Cancelled")
+
+	def test_delivery_trip_status_in_transit(self):
+		self.delivery_trip.submit()
+		self.delivery_trip.delivery_stops[0].visited = 1
+		self.delivery_trip.save()
+		self.assertEqual(self.delivery_trip.status, "In Transit")
+
+	def test_delivery_trip_status_completed(self):
+		self.delivery_trip.submit()
+
+		for stop in self.delivery_trip.delivery_stops:
+			stop.visited = 1
+
+		self.delivery_trip.save()
+		self.assertEqual(self.delivery_trip.status, "Completed")
+
+	def test_delivery_trip_notify_customers(self):
+		notify_customers(delivery_trip=self.delivery_trip.name)
+		self.delivery_trip.load_from_db()
+		self.assertEqual(self.delivery_trip.email_notification_sent, 1)
 
 
 def create_driver():
@@ -67,6 +83,7 @@ def create_delivery_notification():
 
 	delivery_settings = frappe.get_single("Delivery Settings")
 	delivery_settings.dispatch_template = 'Delivery Notification'
+	delivery_settings.save()
 
 
 def create_vehicle():
@@ -84,3 +101,30 @@ def create_vehicle():
 			"vehicle_value": frappe.utils.flt(500000)
 		})
 		vehicle.insert()
+
+def create_delivery_trip(contact=None):
+	if not contact:
+		contact = get_contact_and_address("_Test Customer")
+
+	delivery_trip = frappe.new_doc("Delivery Trip")
+	delivery_trip.update({
+		"doctype": "Delivery Trip",
+		"company": erpnext.get_default_company(),
+		"date": add_days(nowdate(), 5),
+		"departure_time": nowtime(),
+		"driver": frappe.db.get_value('Driver', {"full_name": "Newton Scmander"}),
+		"vehicle": "JB 007",
+		"delivery_stops": [{
+			"customer": "_Test Customer",
+			"address": contact.shipping_address.parent,
+			"contact": contact.contact_person.parent
+		},
+		{
+			"customer": "_Test Customer",
+			"address": contact.shipping_address.parent,
+			"contact": contact.contact_person.parent
+		}]
+	})
+	delivery_trip.insert()
+
+	return delivery_trip
