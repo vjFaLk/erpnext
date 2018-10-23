@@ -36,8 +36,11 @@ class DeliveryTrip(Document):
 		self.update_delivery_notes(delete=True)
 
 	def update_status(self):
-		status_map = ["Draft", "Scheduled", "Cancelled"]
-		status = status_map[self.docstatus]
+		status = {
+			0: "Draft",
+			1: "Scheduled",
+			2: "Cancelled"
+		}[self.docstatus]
 
 		if self.docstatus == 1:
 			visited_stops = [stop.visited for stop in self.delivery_stops]
