@@ -3,7 +3,7 @@
 
 frappe.ui.form.on('Delivery Trip', {
 	setup: function (frm) {
-		frm.set_indicator_formatter('customer', (stop) => (stop.visited) ? "green" : "orange")
+		frm.set_indicator_formatter('customer', (stop) => (stop.visited) ? "green" : "orange");
 
 		frm.set_query("driver", function () {
 			return {
@@ -66,32 +66,92 @@ frappe.ui.form.on('Delivery Trip', {
 		}
 	},
 
+	validate: function (frm) {
+		if (frm.is_new() && frm.doc.delivery_stops) {
+			// frappe.confirm doesn't wait for callback to validate, so creating
+			// Promise to make sure execution is paused until user input
+			return new Promise((resolve, reject) => {
+				frappe.call({
+					method: "erpnext.stock.doctype.delivery_trip.delivery_trip.validate_unique_delivery_notes",
+					args: {
+						delivery_stops: frm.doc.delivery_stops
+					},
+					callback: (r) => {
+						if (r.message.length) {
+							let confirm_message = `Atleast one of the entered Delivery Notes already exist in
+												the following Delivery Trips: ${r.message.join(", ")}.
+												Do you still want to continue?`;
+
+							frappe.confirm(
+								__(confirm_message),
+								() => { resolve(); },  // If "Yes" is selected
+								() => { frappe.set_route("List", frm.doc.doctype); }  // If "No" is selected
+							);
+						} else { resolve(); }
+					},
+					error: (r) => reject(r.message)
+				})
+			})
+		}
+	},
+
+	driver: function (frm) {
+		if (frm.doc.driver) {
+			frappe.db.get_value("Delivery Trip", {
+				docstatus: ["<", 2],
+				driver: frm.doc.driver,
+				departure_time: [">", frappe.datetime.nowdate()]
+			}, "name", (r) => {
+				if (r) {
+					let confirm_message = `${frm.doc.driver_name} has already been assigned a Delivery Trip
+											today (${r.name}). Do you want to modify that instead?`;
+
+					frappe.confirm(__(confirm_message), function () {
+						frappe.set_route("Form", "Delivery Trip", r.name);
+					});
+				};
+			});
+		};
+	},
+
 	calculate_arrival_time: function (frm) {
-		frappe.call({
-			method: 'erpnext.stock.doctype.delivery_trip.delivery_trip.get_arrival_times',
-			freeze: true,
-			freeze_message: __("Updating estimated arrival times."),
-			args: {
-				delivery_trip: frm.doc.name,
-			},
-			callback: function (r) {
-				frm.reload_doc();
+		frappe.db.get_value("Google Maps Settings", { name: "Google Maps Settings" }, "enabled", (r) => {
+			if (r.enabled == 0) {
+				frappe.throw(__("Please enable Google Maps Settings to estimate and optimize routes"));
+			} else {
+				frappe.call({
+					method: 'erpnext.stock.doctype.delivery_trip.delivery_trip.get_arrival_times',
+					freeze: true,
+					freeze_message: __("Updating estimated arrival times."),
+					args: {
+						delivery_trip: frm.doc.name,
+					},
+					callback: function (r) {
+						frm.reload_doc();
+					}
+				});
 			}
-		});
+		})
 	},
 
 	optimize_route: function (frm) {
-		frappe.call({
-			method: 'erpnext.stock.doctype.delivery_trip.delivery_trip.optimize_route',
-			freeze: true,
-			freeze_message: __("Optimizing routes."),
-			args: {
-				delivery_trip: frm.doc.name,
-			},
-			callback: function (r) {
-				frm.reload_doc();
+		frappe.db.get_value("Google Maps Settings", {name: "Google Maps Settings"}, "enabled", (r) => {
+			if (r.enabled == 0) {
+				frappe.throw(__("Please enable Google Maps Settings to estimate and optimize routes"));
+			} else {
+				frappe.call({
+					method: 'erpnext.stock.doctype.delivery_trip.delivery_trip.optimize_route',
+					freeze: true,
+					freeze_message: __("Optimizing routes."),
+					args: {
+						delivery_trip: frm.doc.name,
+					},
+					callback: function (r) {
+						frm.reload_doc();
+					}
+				});
 			}
-		});
+		})
 	},
 
 	notify_customers: function (frm) {

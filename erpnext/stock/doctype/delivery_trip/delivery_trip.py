@@ -5,13 +5,13 @@
 from __future__ import unicode_literals
 
 import datetime
+import json
 
 import frappe
 from frappe import _
 from frappe.contacts.doctype.address.address import get_address_display
 from frappe.model.document import Document
-from frappe.utils import cint, cstr, get_datetime, get_link_to_form, getdate
-from frappe.utils.user import get_user_fullname
+from frappe.utils import cint, get_datetime, get_link_to_form
 
 
 class DeliveryTrip(Document):
@@ -23,6 +23,10 @@ class DeliveryTrip(Document):
 		self.uom_conversion_factor = frappe.db.get_value("UOM Conversion Factor",
 														{"from_uom": "Meter", "to_uom": self.default_distance_uom},
 														"value")
+
+	def validate(self):
+		self.validate_stop_addresses()
+		self.update_status()
 
 	def on_submit(self):
 		self.update_status()
@@ -36,8 +40,11 @@ class DeliveryTrip(Document):
 		self.update_delivery_notes(delete=True)
 
 	def update_status(self):
-		status_map = ["Draft", "Scheduled", "Cancelled"]
-		status = status_map[self.docstatus]
+		status = {
+			0: "Draft",
+			1: "Scheduled",
+			2: "Cancelled"
+		}[self.docstatus]
 
 		if self.docstatus == 1:
 			visited_stops = [stop.visited for stop in self.delivery_stops]
@@ -48,13 +55,19 @@ class DeliveryTrip(Document):
 
 		self.db_set("status", status)
 
+	def validate_stop_addresses(self):
+		for stop in self.delivery_stops:
+			if not stop.customer_address:
+				stop.customer_address = get_address_display(frappe.get_doc("Address", stop.address).as_dict())
+
 	def update_delivery_notes(self, delete=False):
 		"""
-		Update all connected Delivery Notes with delivery-related
-		(driver, vehicle) information.
+		Update all connected Delivery Notes with Delivery Trip details
+		(Driver, Vehicle, etc.). If `delete` is `True`, then details
+		are removed.
 
 		Args:
-			delete (bool, optional): Defaults to False. Flag to delete trip-related info from Delivery Note.
+			delete (bool, optional): Defaults to `False`. `True` if driver details need to be emptied, else `False`.
 		"""
 
 		delivery_notes = list(set([stop.delivery_note for stop in self.delivery_stops if stop.delivery_note]))
@@ -81,7 +94,7 @@ class DeliveryTrip(Document):
 			note_doc.save()
 
 		delivery_notes = [get_link_to_form("Delivery Note", note) for note in delivery_notes]
-		frappe.msgprint(_("Delivery Notes {0} updated".format(", ".join(delivery_notes))))
+		frappe.msgprint(_("Delivery Notes {0} updated".format(", ".join(delivery_notes))), alert=True)
 
 	def process_route(self, optimize):
 		"""
@@ -92,6 +105,9 @@ class DeliveryTrip(Document):
 		Args:
 			optimize (bool): True if route needs to be optimized, else False
 		"""
+
+		if not frappe.db.get_single_value("Google Maps Settings", "enabled"):
+			frappe.throw(_("Cannot process route, since Google Maps Settings is disabled."))
 
 		departure_datetime = get_datetime(self.departure_time)
 		route_list = self.form_route_list(optimize)
@@ -142,10 +158,10 @@ class DeliveryTrip(Document):
 		split into sublists at the specified lock position(s).
 
 		Args:
-			optimize (bool): True if route needs to be optimized, else False
+			optimize (bool): `True` if route needs to be optimized, else `False`
 
 		Returns:
-			(list of list of str): List of address routes split at locks, if optimize is True
+			(list of list of str): List of address routes split at locks, if optimize is `True`
 		"""
 
 		settings = frappe.get_single("Google Maps Settings")
@@ -168,25 +184,9 @@ class DeliveryTrip(Document):
 			leg.append(home_address)
 			route_list.append(leg)
 
-		route_list = [[self.sanitize_address(address) for address in route] for route in route_list]
+		route_list = [[sanitize_address(address) for address in route] for route in route_list]
 
 		return route_list
-
-	def sanitize_address(self, address):
-		"""
-		Remove HTML breaks in a given address
-
-		Args:
-			address (str): Address to be sanitized
-
-		Returns:
-			(str): Sanitized address
-		"""
-
-		address = address.split('<br>')
-
-		# Only get the first 4 blocks of the address
-		return ', '.join(address[:3])
 
 	def rearrange_stops(self, optimized_order, start):
 		"""
@@ -296,18 +296,41 @@ def get_arrival_times(delivery_trip):
 	delivery_trip.process_route(optimize=False)
 
 
+def sanitize_address(address):
+	"""
+	Remove HTML breaks in a given address
+
+	Args:
+		address (str): Address to be sanitized
+
+	Returns:
+		(str): Sanitized address
+	"""
+
+	if not address:
+		return
+
+	address = address.split('<br>')
+
+	# Only get the first 3 blocks of the address
+	return ', '.join(address[:3])
+
+
 def get_directions(route, optimize):
 	"""
 	Retrieve map directions for a given route and departure time.
-	If optimize is true, Google Maps will return an optimized
+	If optimize is `True`, Google Maps will return an optimized
 	order for the intermediate waypoints.
+
+	NOTE: Google's API does take an additional `departure_time` key,
+	but it only works for routes without any waypoints.
 
 	Args:
 		route (list of str): Route addresses (origin -> waypoint(s), if any -> destination)
-		optimize (bool): True if route needs to be optimized, else False
+		optimize (bool): `True` if route needs to be optimized, else `False`
 
 	Returns:
-		(dict): Route legs and, if `optimize` is True, optimized waypoint order
+		(dict): Route legs and, if `optimize` is `True`, optimized waypoint order
 	"""
 
 	settings = frappe.get_single("Google Maps Settings")
@@ -326,6 +349,22 @@ def get_directions(route, optimize):
 		frappe.throw(_(e.message))
 
 	return directions[0] if directions else False
+
+@frappe.whitelist()
+def validate_unique_delivery_notes(delivery_stops):
+	delivery_stops = json.loads(delivery_stops)
+	delivery_notes = [stop.get("delivery_note") for stop in delivery_stops if stop.get("delivery_note")]
+
+	if not delivery_notes:
+		return []
+
+	existing_trips = frappe.get_all("Delivery Stop",
+									filters={"delivery_note": ["IN", delivery_notes],
+											"docstatus": ["<", 2]},
+									fields=["distinct(parent)"])
+	existing_trips = [stop.parent for stop in existing_trips]
+
+	return existing_trips
 
 
 @frappe.whitelist()
