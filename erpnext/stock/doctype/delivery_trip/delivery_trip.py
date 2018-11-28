@@ -60,6 +60,22 @@ class DeliveryTrip(Document):
 			if not stop.customer_address:
 				stop.customer_address = get_address_display(frappe.get_doc("Address", stop.address).as_dict())
 
+	def update_status(self):
+		status = {
+			0: "Draft",
+			1: "Scheduled",
+			2: "Cancelled"
+		}[self.docstatus]
+
+		if self.docstatus == 1:
+			visited_stops = [stop.visited for stop in self.delivery_stops]
+			if all(visited_stops):
+				status = "Completed"
+			elif any(visited_stops):
+				status = "In Transit"
+
+		self.db_set("status", status)
+
 	def update_delivery_notes(self, delete=False):
 		"""
 		Update all connected Delivery Notes with Delivery Trip details
