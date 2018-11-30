@@ -27,6 +27,7 @@ class DeliveryTrip(Document):
 	def validate(self):
 		self.validate_stop_addresses()
 		self.update_status()
+		self.update_package_total()
 
 	def on_submit(self):
 		self.update_status()
@@ -54,6 +55,9 @@ class DeliveryTrip(Document):
 				status = "In Transit"
 
 		self.db_set("status", status)
+
+	def update_package_total(self):
+		self.package_total = sum([stop.grand_total for stop in self.delivery_stops if stop.grand_total])
 
 	def validate_stop_addresses(self):
 		for stop in self.delivery_stops:
