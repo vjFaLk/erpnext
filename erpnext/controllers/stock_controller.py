@@ -337,8 +337,12 @@ class StockController(AccountsController):
 			elif self.doctype == "Stock Entry" and not d.quality_inspection and d.t_warehouse:
 				raise_exception = True
 
+			# Check if Quality Inspection is Submitted
+			if d.quality_inspection and frappe.db.get_value("Quality Inspection", d.quality_inspection, "docstatus") != 1:
+				raise_exception = True
+
 			if raise_exception:
-				frappe.msgprint(_("Quality Inspection required for Item {0}").format(d.item_code))
+				frappe.msgprint(_("A submitted Quality Inspection is required for Item {0}").format(d.item_code))
 				if self.docstatus==1:
 					raise frappe.ValidationError
 
