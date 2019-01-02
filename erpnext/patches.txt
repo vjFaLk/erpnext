@@ -581,3 +581,4 @@ erpnext.patches.v10_0.repost_gle_for_purchase_receipts_with_rejected_items
 erpnext.patches.v11_0.set_missing_gst_hsn_code
 erpnext.patches.v11_0.update_package_total_in_delivery_trips
 erpnext.patches.v11_0.rename_bom_wo_fields
+erpnext.patches.v12_0.enable_auto_select_batches_in_stock_settings
