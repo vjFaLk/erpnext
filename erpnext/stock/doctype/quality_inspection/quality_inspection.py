@@ -3,6 +3,7 @@
 
 from __future__ import unicode_literals
 import frappe
+from frappe import _
 from frappe.model.document import Document
 from erpnext.stock.doctype.quality_inspection_template.quality_inspection_template \
 	import get_template_details
@@ -38,6 +39,10 @@ class QualityInspection(Document):
 		self.quality_inspection_template = template
 		self.get_item_specification_details()
 
+	def before_submit(self):
+		if not self.status:
+			frappe.throw(_("Cannot submit a Quality Inspection without a status."))
+
 	def on_submit(self):
 		self.update_qc_reference()
 
@@ -61,7 +66,7 @@ def item_query(doctype, txt, searchfield, start, page_len, filters):
 	if filters.get("from"):
 		from frappe.desk.reportview import get_match_cond
 		mcond = get_match_cond(filters["from"])
-		cond = ""
+		cond, qi_condition = "", "and (quality_inspection is null or quality_inspection = '')"
 
 		if filters.get('from') in ['Purchase Invoice Item', 'Purchase Receipt Item']:
 			cond = """and item_code in (select name from `tabItem` where
@@ -72,9 +77,13 @@ def item_query(doctype, txt, searchfield, start, page_len, filters):
 		elif filters.get('from') == 'Stock Entry Detail':
 			cond = """and s_warehouse is null"""
 
+		if filters.get('from') in ['Supplier Quotation Item']:
+			qi_condition = ""
+
 		return frappe.db.sql(""" select item_code from `tab{doc}`
 			where parent=%(parent)s and docstatus < 2 and item_code like %(txt)s
-			and (quality_inspection is null or quality_inspection = '')
-			{cond} {mcond} order by item_code limit {start}, {page_len}""".format(doc=filters.get('from'),
-			parent=filters.get('parent'), cond=cond, mcond=mcond, start=start, page_len = page_len),
+			{qi_condition} {cond} {mcond}
+			order by item_code limit {start}, {page_len}""".format(doc=filters.get('from'),
+			parent=filters.get('parent'), cond = cond, mcond = mcond, start = start,
+			page_len = page_len, qi_condition = qi_condition),
 			{'parent': filters.get('parent'), 'txt': "%%%s%%" % txt})
