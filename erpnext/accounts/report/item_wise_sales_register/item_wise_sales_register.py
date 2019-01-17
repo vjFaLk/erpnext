@@ -88,7 +88,7 @@ def get_columns(additional_table_columns):
 		_("Income Account") + ":Link/Account:140", _("Cost Center") + ":Link/Cost Center:140",
 		_("Stock Qty") + ":Float:120", _("Stock UOM") + "::100",
 		_("Rate") + ":Currency/currency:120",
-		_("Amount") + ":Currency/currency:120"
+		_("Net Total") + ":Currency/currency:120"
 	]
 
 	return columns
@@ -108,13 +108,13 @@ def get_conditions(filters):
 		conditions += """ and exists(select name from `tabSales Invoice Payment`
 			where parent=`tabSales Invoice`.name
 				and ifnull(`tabSales Invoice Payment`.mode_of_payment, '') = %(mode_of_payment)s)"""
-	
+
 	if filters.get("warehouse"):
 		conditions +=  """ and exists(select name from `tabSales Invoice Item`
 			 where parent=`tabSales Invoice`.name
 			 	and ifnull(`tabSales Invoice Item`.warehouse, '') = %(warehouse)s)"""
 
-	
+
 	if filters.get("brand"):
 		conditions +=  """ and exists(select name from `tabSales Invoice Item`
 			 where parent=`tabSales Invoice`.name
@@ -131,10 +131,10 @@ def get_conditions(filters):
 def get_items(filters, additional_query_columns):
 	conditions = get_conditions(filters)
 	match_conditions = frappe.build_match_conditions("Sales Invoice")
-	
+
 	if match_conditions:
 		match_conditions = " and {0} ".format(match_conditions)
-	
+
 	if additional_query_columns:
 		additional_query_columns = ', ' + ', '.join(additional_query_columns)
 
@@ -265,6 +265,6 @@ def get_tax_accounts(item_list, columns, company_currency,
 		columns.append(desc + " Rate:Data:80")
 		columns.append(desc + " Amount:Currency/currency:100")
 
-	columns += ["Total Tax:Currency/currency:80", "Total:Currency/currency:100"]
+	columns += ["Total Tax:Currency/currency:80", "Grand Total:Currency/currency:100"]
 
 	return itemised_tax, tax_columns
