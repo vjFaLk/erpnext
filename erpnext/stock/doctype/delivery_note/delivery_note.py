@@ -446,8 +446,8 @@ def make_sales_invoice(source_name, target_doc=None):
 			target.update(get_fetch_values("Sales Invoice", 'company_address', target.company_address))
 
 	def update_item(source_doc, target_doc, source_parent):
-		target_doc.qty = (source_doc.qty -
-			invoiced_qty_map.get(source_doc.name, 0) - returned_qty_map.get(source_doc.so_detail, 0))
+		returned_qty = returned_qty_map.get(source_doc.so_detail, 0) if not source_parent.is_return else 0
+		target_doc.qty = (source_doc.qty - invoiced_qty_map.get(source_doc.name, 0) - returned_qty)
 
 		if source_doc.serial_no and source_parent.per_billed > 0:
 			target_doc.serial_no = get_delivery_note_serial_no(source_doc.item_code,
