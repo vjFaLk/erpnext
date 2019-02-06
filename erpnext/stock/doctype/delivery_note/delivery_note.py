@@ -213,6 +213,12 @@ class DeliveryNote(SellingController):
 		# Check for Approving Authority
 		frappe.get_doc('Authorization Control').validate_approving_authority(self.doctype, self.company, self.base_grand_total, self)
 
+		# We want to close completed sales orders if a credit note is being issued against any item
+		# returns, however, once an order is closed, no accounting entries can be made, so we're only
+		# marking them for closing here, while actually closing them after the other entries are made
+		if self.issue_credit_note:
+			self.close_sales_orders(only_mark=True)
+
 		# update delivered qty in sales order
 		self.update_prevdoc_status()
 		self.update_billing_status()
@@ -221,10 +227,15 @@ class DeliveryNote(SellingController):
 			self.check_credit_limit()
 		elif self.issue_credit_note:
 			self.make_return_invoice()
+
 		# Updating stock ledger should always be called after updating prevdoc status,
 		# because updating reserved qty in bin depends upon updated delivered qty in SO
 		self.update_stock_ledger()
 		self.make_gl_entries()
+
+		# TODO: Close sales orders that are marked for it; find a better way to do this
+		if self.issue_credit_note:
+			self.close_sales_orders()
 
 	def on_cancel(self):
 		self.check_close_sales_order("against_sales_order")
@@ -238,7 +249,6 @@ class DeliveryNote(SellingController):
 		self.update_stock_ledger()
 
 		self.cancel_packing_slips()
-
 		self.make_gl_entries_on_cancel()
 
 	def check_credit_limit(self):
@@ -324,7 +334,7 @@ class DeliveryNote(SellingController):
 
 	def make_return_invoice(self):
 		if frappe.db.get_value('Delivery Note', self.return_against, 'per_billed') != 100:
-			frappe.throw(_("Cannot Issue Credit Note if Delvery Note {0} is not billed.").format(self.return_against))
+			frappe.throw(_("Cannot Issue Credit Note if Delivery Note {0} is not billed.").format(self.return_against))
 
 		return_invoices = defaultdict(list)
 		for item in self.items:
@@ -342,6 +352,22 @@ class DeliveryNote(SellingController):
 			return_invoice.items = list(filter(lambda x: x.item_code in items, return_invoice.items))
 			return_invoice.save()
 			return_invoice.submit()
+
+	def close_sales_orders(self, only_mark=False):
+		sales_orders = [item.against_sales_order for item in self.items if item.against_sales_order]
+		sales_orders = list(set(sales_orders))
+
+		for order in sales_orders:
+			so_doc = frappe.get_doc("Sales Order", order)
+
+			if only_mark and so_doc.status == "Completed":
+				so_doc.is_completed = True
+				so_doc.save()
+				continue
+
+			if so_doc.get("is_completed"):
+				so_doc.update_status("Closed")
+
 
 def update_billed_amount_based_on_so(so_detail, update_modified=True):
 	# Billed against Sales Order directly
