@@ -587,3 +587,4 @@ erpnext.patches.v11_0.renamed_from_to_fields_in_project
 erpnext.patches.v11_0.add_permissions_in_gst_settings
 erpnext.patches.v11_1.setup_guardian_role
 erpnext.patches.v12_0.enable_auto_select_batches_in_stock_settings
+erpnext.patches.v12_0.set_is_completed_field_in_sales_orders
