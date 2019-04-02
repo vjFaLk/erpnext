@@ -7,7 +7,8 @@
 frappe.ui.form.on('Quotation', {
 	setup: function(frm) {
 		frm.custom_make_buttons = {
-			'Sales Order': 'Make Sales Order'
+			'Sales Order': 'Make Sales Order',
+			'Contract': 'Make Contract'
 		}
 	},
 
@@ -53,6 +54,11 @@ erpnext.selling.QuotationController = erpnext.selling.SellingController.extend({
 			if(!doc.valid_till || frappe.datetime.get_diff(doc.valid_till, frappe.datetime.get_today()) > 0) {
 				cur_frm.add_custom_button(__('Sales Order'),
 					cur_frm.cscript['Make Sales Order'], __("Make"));
+			}
+			
+			if(!doc.valid_till || frappe.datetime.get_diff(doc.valid_till, frappe.datetime.get_today()) > 0) {
+				cur_frm.add_custom_button(__('Contract '),
+					cur_frm.cscript['Make Contract'], __("Make"));
 			}
 
 			if(doc.status!=="Ordered") {
@@ -170,6 +176,12 @@ cur_frm.fields_dict.lead.get_query = function(doc,cdt,cdn) {
 cur_frm.cscript['Make Sales Order'] = function() {
 	frappe.model.open_mapped_doc({
 		method: "erpnext.selling.doctype.quotation.quotation.make_sales_order",
+		frm: cur_frm
+	})
+}
+cur_frm.cscript['Make Contract'] = function() {
+	frappe.model.open_mapped_doc({
+		method: "erpnext.selling.doctype.quotation.quotation.make_contract",
 		frm: cur_frm
 	})
 }

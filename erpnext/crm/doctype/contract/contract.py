@@ -6,8 +6,10 @@ from __future__ import unicode_literals
 
 import frappe
 from frappe import _
+from erpnext import get_default_company
 from frappe.model.document import Document
-from frappe.utils import getdate, now_datetime, nowdate
+from frappe.core.doctype.role.role import get_emails_from_role
+from frappe.utils import getdate, now_datetime, nowdate, get_link_to_form, cstr, datetime
 
 
 class Contract(Document):
@@ -23,11 +25,21 @@ class Contract(Document):
 			name = "{} - {}".format(name, count)
 
 		self.name = _(name)
+		
 
 	def validate(self):
 		self.validate_dates()
 		self.update_contract_status()
 		self.update_fulfilment_status()
+
+	def after_insert(self):
+		self.create_hash()
+
+	def create_hash(self):
+		self.hash = cstr(hash(self.name)).lstrip("-")
+		self.hash_geenrated_on = now_datetime()
+		print("+++++++self.hash+++++", self.hash)
+		self.save()
 
 	def before_update_after_submit(self):
 		self.update_contract_status()
@@ -36,6 +48,113 @@ class Contract(Document):
 	def validate_dates(self):
 		if self.end_date and self.end_date < self.start_date:
 			frappe.throw(_("End Date cannot be before Start Date."))
+
+	def on_submit(self):
+		# self.send_contract_email_notification()
+		self.email_contract_link()
+		
+		self.create_sales_invoice()
+		# self.send_sales_invoice_email_notification()
+
+	# def before_submit(self):
+		
+		
+
+	def send_contract_email_notification(self):
+		"""
+			Notify 'Contract Managers' about auto-creation
+			of contracts
+		"""
+		print("===========self=====:", self)
+		recipients = ["dikshajadhav11.dj@gmail.com"]
+		# recipients = get_emails_from_role("Contract Manager")
+		
+		if recipients:
+			subject = "Contract Generated"
+			message = frappe.render_template("templates/emails/contract_generated.html", {
+				"contract": self
+			})
+
+		frappe.sendmail(recipients=recipients, subject=subject, message=message)
+	
+	def email_contract_link(self):
+		"""
+			Email the contract link to user for him to sign it
+		"""
+		print("seeeeelllllfff",  self)
+		recipients = ["diksha@digithinkit.com"]
+		# recipients = get_emails_from_role("Contract Manager")
+		print("Tttttttthis is a hash", self.hash)
+		link_to_contract = "http://localhost:8000/contract_generated" + "?token=" + self.hash
+	
+		if recipients:
+			subject = "Contract to sign"
+			# message = frappe.render_template("www/contract_generated.html", {
+			# 	"contract": self
+			# })
+			message = link_to_contract
+		
+		
+		
+		# TODO : Create fields to store token and token generation time
+		# TODO : Store Hash and current Datetime (checkout frappe/utils/data.py to get time related functions) in Contract
+
+		frappe.sendmail(recipients=recipients, subject=subject, message=message)
+		
+
+	def create_sales_invoice(self):
+		sales_invoice = frappe.new_doc("Sales Invoice")
+		default_company = "Synergy Business Management INC."
+
+		sales_invoice.update({
+			"customer": self.party_name,
+			# "company": get_default_company(),
+			"company": default_company,
+			"contract": self,
+			"exempt_from_sales_tax": 1,
+			"due_date": nowdate(),
+		})
+
+		contract_link = get_link_to_form("Contract", self.name)
+
+		# for order, discount in order_discounts.items()
+		# order_link = get_link_to_form("Sales Order", order.name)
+
+		sales_invoice.append("items", {
+			"item_name": "Contract lapse fee",
+			"description": "This fee is charged for the non-compliance of Contract {0}".format(contract_link),
+			"qty": 1,
+			"uom": "Nos",
+			"rate": 45,
+			"conversion_factor": 1,
+			# TODO: make income account configurable from the frontend
+			"income_account": frappe.db.get_value("Company", default_company, "default_income_account"),
+			"cost_center": frappe.db.get_value("Company", default_company, "cost_center")
+		})
+
+		sales_invoice.set_missing_values()
+		sales_invoice.insert()
+
+		return sales_invoice
+
+
+	def send_sales_invoice_email_notification(self):
+		"""
+			Notify 'Contract Managers' about auto-creation
+			of sales invoice
+		"""
+		print("===========self=====:", self)
+		recipients = ["dikshajadhav11.dj@gmail.com"]
+		# recipients = get_emails_from_role("Contract Manager")
+
+		if recipients:
+			subject = "Sales invoice Generated"
+			# message = frappe.render_template("templates/emails/contract_generated.html", {
+			# 	"contract": self
+			# })
+			message = "Sales invoice generated"
+
+		frappe.sendmail(recipients=recipients, subject=subject, message=message)
 
 	def update_contract_status(self):
 		if self.is_signed:
@@ -67,8 +186,11 @@ class Contract(Document):
 
 	def get_fulfilment_progress(self):
 		return len([term for term in self.fulfilment_terms if term.fulfilled])
+		
 
 
+def accept_contract_terms():
+	
 def get_status(start_date, end_date):
 	"""
 	Get a Contract's status based on the start, current and end dates
