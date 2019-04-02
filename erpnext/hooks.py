@@ -219,7 +219,12 @@ doc_events = {
 	},
 	"Contact":{
 		"on_trash": "erpnext.support.doctype.issue.issue.update_issue"
-	}
+	},
+	
+	# "Contract": {
+	# 	"on_submit": "erpnext.utils.email_contract"
+	# }
+
 }
 
 scheduler_events = {
