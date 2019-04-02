@@ -1,0 +1,36 @@
+<h1>Contract</h1>
+<p>Hello</p>
+
+{% if contract.error %}
+<p>{{contract.error}}</p>
+
+{% else %}
+
+    {{ contract.name }} <br>
+    {{ contract.start_date }} <br>
+    {{ contract.end_date }}  <br>
+    {{ contract.party_type }} <br>
+    <input id="sign" type="checkbox"> signed<br> <br> <br>
+    <button id="sign-contract" type="submit" form="nameform" value="Submit">Submit Contract</button>
+    
+{% endif %}
+
+$sign-contract.on("click", function () {
+    if (!validateContractSigning()) {
+        return;
+    }
+    frappe.call({
+        method: "erpnext.crm.doctype.contract.contract.accept_contract_terms",
+        args: {
+            dn: $("#contract-terms").data('doc-name'),
+            signee: $('#contract-signee').val()
+        },
+        freeze: true,
+        freeze_message: __("Saving..."),
+        callback: function (r) {
+            if (!r.exe) {
+                window.location.reload();
+            }
+        }
+    })
+});
