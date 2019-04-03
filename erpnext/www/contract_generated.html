@@ -1,36 +1,47 @@
-<h1>Contract</h1>
-<p>Hello</p>
+{% extends "templates/web.html" %}
+{% block page_content %}
+<h1> Your Contract here:</h1>
 
 {% if contract.error %}
-<p>{{contract.error}}</p>
+    <p>{{contract.error}}</p>
 
 {% else %}
-
-    {{ contract.name }} <br>
-    {{ contract.start_date }} <br>
-    {{ contract.end_date }}  <br>
-    {{ contract.party_type }} <br>
-    <input id="sign" type="checkbox"> signed<br> <br> <br>
-    <button id="sign-contract" type="submit" form="nameform" value="Submit">Submit Contract</button>
     
-{% endif %}
+    Party Name: {{ contract.party_name }} <br>
+    Start date: {{ contract.start_date }} <br>
+    End date: {{ contract.end_date }}  <br>
+    
+    Signee name: <input type="text" id="signee" value="yo" data-signee="{{ contract.signee }}"> <br><br>
+    <div id="contract" data-contractname="{{contract.name}}" ></div>
 
-$sign-contract.on("click", function () {
-    if (!validateContractSigning()) {
-        return;
-    }
-    frappe.call({
-        method: "erpnext.crm.doctype.contract.contract.accept_contract_terms",
-        args: {
-            dn: $("#contract-terms").data('doc-name'),
-            signee: $('#contract-signee').val()
-        },
-        freeze: true,
-        freeze_message: __("Saving..."),
-        callback: function (r) {
-            if (!r.exe) {
-                window.location.reload();
-            }
-        }
-    })
+    <button id="sign-contract" type="submit" value="Submit">Submit Contract</button> <br>
+    
+ {% endif %}
+ {% endblock %}
+
+ {% block script %}
+<script>
+   
+    var $signContract = $("#sign-contract");
+    var contract = $('#contract').data();
+    
+    
+    $signContract.on("click", function () {
+        var signee = document.getElementById("signee").value;
+        console.log(signee);
+        frappe.call({
+            method: "erpnext.crm.doctype.contract.contract.accept_contract_terms",
+            args: {
+                signee: signee,
+                contract: contract.contractname,
+                },
+            freeze: true,
+		    freeze_message: __("Sharing..."),
+		    callback: function (r) {
+			    frappe.msgprint(__(r))
+				}
+            })
 });
+
+</script>
+{% endblock %}

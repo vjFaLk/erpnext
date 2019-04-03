@@ -3,7 +3,7 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
-
+import json
 import frappe
 from frappe import _
 from erpnext import get_default_company
@@ -81,21 +81,19 @@ class Contract(Document):
 		"""
 			Email the contract link to user for him to sign it
 		"""
-		print("seeeeelllllfff",  self)
+
 		recipients = ["diksha@digithinkit.com"]
 		# recipients = get_emails_from_role("Contract Manager")
-		print("Tttttttthis is a hash", self.hash)
+
 		link_to_contract = "http://localhost:8000/contract_generated" + "?token=" + self.hash
-	
+
 		if recipients:
 			subject = "Contract to sign"
 			# message = frappe.render_template("www/contract_generated.html", {
 			# 	"contract": self
 			# })
 			message = link_to_contract
-		
-		
-		
+
 		# TODO : Create fields to store token and token generation time
 		# TODO : Store Hash and current Datetime (checkout frappe/utils/data.py to get time related functions) in Contract
 
@@ -188,9 +186,27 @@ class Contract(Document):
 		return len([term for term in self.fulfilment_terms if term.fulfilled])
 		
 
+@frappe.whitelist()
+def accept_contract_terms(signee, contract=None):
+	"""
+	Gets signee: whoever signed the contract, contract: contract name
 
-def accept_contract_terms():
-	
+	updates is_signed, signee and signed_on field in db
+
+	returns relevant message
+	"""
+	try:
+		doc = frappe.get_doc("Contract", contract)
+		print("signeeeee is", signee)
+		# frappe.db.set_value("Contract", contract , "is_signed", 1, "signee", signee, "signed", "signed_on", now_datetime())
+		doc.is_signed = 1
+		doc.signee = signee
+		doc.signed_on = now_datetime()
+		doc.save()
+		return "Your contract is shared successfully!"
+	except:
+		return "couldn't submit signing"
+
 def get_status(start_date, end_date):
 	"""
 	Get a Contract's status based on the start, current and end dates
