@@ -10,6 +10,8 @@
     Party Name: {{ contract.party_name }} <br>
     Start date: {{ contract.start_date }} <br>
     End date: {{ contract.end_date }}  <br>
+    {% comment %} TODO: display the signature field {% endcomment %}
+    {% comment %} Your sign here: {{  contract.signature  }} <br> {% endcomment %}
     
     Signee name: <input type="text" id="signee" value="yo" data-signee="{{ contract.signee }}"> <br><br>
     <div id="contract" data-contractname="{{contract.name}}" ></div>
