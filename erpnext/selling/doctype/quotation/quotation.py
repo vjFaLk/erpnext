@@ -120,18 +120,26 @@ def get_list_context(context=None):
 
 @frappe.whitelist()
 def make_sales_order(source_name, target_doc=None):
+	print("reached func", source_name)
 	quotation = frappe.db.get_value("Quotation", source_name, ["transaction_date", "valid_till"], as_dict = 1)
+	print("quotation", quotation)
 	if quotation.valid_till and (quotation.valid_till < quotation.transaction_date or quotation.valid_till < getdate(nowdate())):
 		frappe.throw(_("Validity period of this quotation has ended."))
 	return _make_sales_order(source_name, target_doc)
 
-def _make_sales_order(source_name, target_doc=None, ignore_permissions=False):
+def _make_sales_order(source_name, target_doc = None, ignore_permissions=False):
+	print("source_name000000000000000", source_name, "target_doc", target_doc)
 	customer = _make_customer(source_name, ignore_permissions)
 
 	def set_missing_values(source, target):
 		if customer:
 			target.customer = customer.name
 			target.customer_name = customer.customer_name
+
+		# target.set_warehouse = "Finished Goods - SBM"
+		target.set_warehouse = frappe.db.get_single_value("Stock Settings", "default_warehouse")
+		print("target.set_warehouse", target.set_warehouse)
+		target.delivery_date = now_datetime()
 		target.ignore_pricing_rule = 1
 		target.flags.ignore_permissions = ignore_permissions
 		target.run_method("set_missing_values")
@@ -161,15 +169,19 @@ def _make_sales_order(source_name, target_doc=None, ignore_permissions=False):
 			"Sales Team": {
 				"doctype": "Sales Team",
 				"add_if_empty": True
-			}
+			},
+
 		}, target_doc, set_missing_values, ignore_permissions=ignore_permissions)
 
 	# postprocess: fetch shipping address, set missing values
-
+	print("doclist", doclist)
+	doclist.save()
 	return doclist
 
 @frappe.whitelist()
 def make_contract(source_name, target_doc=None):
+	print("@@@@@@@source name", source_name)
+	print("target_doc", target_doc)
 	quotation = frappe.db.get_value("Quotation", source_name, ["transaction_date", "valid_till"], as_dict = 1)
 	if quotation.valid_till and (quotation.valid_till < quotation.transaction_date or quotation.valid_till < getdate(nowdate())):
 		frappe.throw(_("Validity period of this quotation has ended."))
@@ -196,8 +208,8 @@ def _make_contract(source_name, target_doc=None, ignore_permissions=False):
 					"docstatus": ["=", 1]
 				},
 				"field_map": {
-				"company": "party_name",
-				"customer": "party_user",
+				# "company": "party_name",
+				"customer": "party_name",
 				"transaction_date": "start_date",
 				"valid_till": "end_date",
 				"document_name": "amended_from"

@@ -9,6 +9,8 @@ from frappe import _
 from erpnext import get_default_company
 from frappe.model.document import Document
 from frappe.core.doctype.role.role import get_emails_from_role
+from frappe.model.mapper import get_mapped_doc
+from erpnext.selling.doctype.quotation.quotation import make_sales_order
 from frappe.utils import getdate, now_datetime, nowdate, get_link_to_form, cstr, datetime
 
 
@@ -37,7 +39,7 @@ class Contract(Document):
 
 	def create_hash(self):
 		self.hash = cstr(hash(self.name)).lstrip("-")
-		self.hash_geenrated_on = now_datetime()
+		self.hash_generated_on = now_datetime()
 		print("+++++++self.hash+++++", self.hash)
 		self.save()
 
@@ -196,6 +198,7 @@ def accept_contract_terms(signee, contract=None):
 	returns relevant message
 	"""
 	try:
+		print("!!!!!!!!!contarct", contract, "type(contract)", type(contract))
 		doc = frappe.get_doc("Contract", contract)
 		print("signeeeee is", signee)
 		# frappe.db.set_value("Contract", contract , "is_signed", 1, "signee", signee, "signed", "signed_on", now_datetime())
@@ -203,9 +206,43 @@ def accept_contract_terms(signee, contract=None):
 		doc.signee = signee
 		doc.signed_on = now_datetime()
 		doc.save()
+		print("ssssssubmitted contarct is: ", doc, "\nsigned_on", doc.signed_on) 
+		print("doc.is_signed", doc.is_signed)
+		
 		return "Your contract is shared successfully!"
 	except:
 		return "couldn't submit signing"
+	finally:
+		print("((((((((((here I am")	
+		doc = frappe.get_doc("Contract", contract)
+		quotation = frappe.get_doc("Quotation", doc.document_name)
+		print("quotation: ", quotation)
+		make_sales_order(quotation.name)
+
+# def create_sales_order(contract):
+# 	"""
+# 		Create the sales order on getting the contract signed by user
+# 	"""
+# 	quotation = frappe.get_doc("Quotation", contract.document_name) 
+	
+# 	new_sales_order = frappe.new_doc("Sales Order")
+# 	doclist = get_mapped_doc("Quotation", quotation, {    # quotation is your source doc for get_mapped_doc func
+# 			"Quotation": {
+# 				"doctype": "Sales Order",
+# 				"validation": {
+# 					"docstatus": ["=", 1]
+# 				},
+# 				"field_map": {
+# 				# "company": "party_name",
+# 				"customer": "party_name",
+# 				"transaction_date": "start_date",
+# 				"valid_till": "end_date",
+# 				"document_name": "amended_from"
+				
+# 			}
+# 			}
+# 		}, target_doc, set_missing_values, ignore_permissions=ignore_permissions)
+
 
 def get_status(start_date, end_date):
 	"""
