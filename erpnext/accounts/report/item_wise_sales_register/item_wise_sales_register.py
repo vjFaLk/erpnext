@@ -54,8 +54,10 @@ def _execute(filters=None, additional_table_columns=None, additional_query_colum
 			delivery_note, d.income_account, d.cost_center, d.stock_qty, d.stock_uom
 		]
 
-		row += [(d.base_net_rate * d.qty)/d.stock_qty, d.base_net_amount] \
-			if d.stock_uom != d.uom and d.stock_qty != 0 else [d.base_net_rate, d.base_net_amount]
+		if d.stock_uom != d.uom and d.stock_qty:
+			row += [(d.base_net_rate * d.qty)/d.stock_qty, d.base_net_amount]
+		else:
+			row += [d.base_net_rate, d.base_net_amount]
 
 		total_tax = 0
 		for tax in tax_columns:
