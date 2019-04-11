@@ -85,8 +85,8 @@ class Contract(Document):
 		recipients = ["diksha@digithinkit.com"]
 		# recipients = get_emails_from_role("Contract Manager")
 
-		link_to_contract = "http://localhost:8000/contract_generated" + "?token=" + self.hash
-
+		# link_to_contract = "http://localhost:8000/contract_generated" + "?token=" + self.hash
+		link_to_contract = "http://localhost:8000/sign" + "?token=" + self.hash
 		if recipients:
 			subject = "Contract to sign"
 			# message = frappe.render_template("www/contract_generated.html", {
