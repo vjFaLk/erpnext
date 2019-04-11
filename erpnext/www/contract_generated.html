@@ -14,7 +14,7 @@
     <div id="contract" data-contractname="{{contract.name}}" ></div>
 
     <button id="sign-contract" type="submit" value="Submit">Submit Contract</button> <br>
-    
+    {% block script %}
     <script>
    
     var $signContract = $("#sign-contract");
@@ -39,6 +39,6 @@
 });
 
 </script>
-
+{% endblock %}
  {% endif %}
  {% endblock %}
