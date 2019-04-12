@@ -20,8 +20,7 @@ def get_context(context):
     
     if now_datetime() > add_to_date(doc.hash_generated_on, hours=24):
         raise frappe.DoesNotExistError
-        # context.error = "Invalid link"
-          
+       
     else:
         context.contract = doc
         
