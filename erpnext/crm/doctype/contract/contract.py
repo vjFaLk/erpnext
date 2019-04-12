@@ -23,7 +23,6 @@ class Contract(Document):
 
 		self.name = _(name)
 		
-
 	def validate(self):
 		self.validate_dates()
 		self.update_contract_status()
@@ -68,10 +67,7 @@ class Contract(Document):
 		"""
 			Email the contract link to user for him to sign it
 		"""
-
 		recipients = ["diksha@digithinkit.com"]
-		
-
 		link_to_contract = "http://localhost:8000/contract_generated" + "?token=" + self.hash
 		
 		if recipients:
@@ -94,7 +90,6 @@ class Contract(Document):
 		})
 
 		contract_link = get_link_to_form("Contract", self.name)
-
 
 		sales_invoice.append("items", {
 			"item_name": "Contract lapse fee",
