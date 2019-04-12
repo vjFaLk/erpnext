@@ -12,21 +12,37 @@
     End date: {{ contract.end_date }}  <br> 
     Signee name: <input type="text" id="signee" value="yo" data-signee="{{ contract.signee }}"> <br><br>
     <div id="contract" data-contractname="{{contract.name}}" ></div>
+    <div id="signature"></div>
 
     <button id="sign-contract" type="submit" value="Submit">Submit Contract</button> <br>
+
     {% block script %}
+    <script type="text/javascript" src="/assets/frappe/js/lib/jquery/jquery.min.js"></script>
+    <script type="text/javascript" src="/assets/frappe/js/frappe/jSignature/libs/jSignature.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $("#signature").jSignature()
+        })
+    </script>
+
+    <script>
+        var $sigdiv = $("#signature")
+        $sigdiv.jSignature() 
+        $sigdiv.jSignature("reset")
+        var datapair = $sigdiv.jSignature("getData") 
+
+    </script>
     <script>
    
     var $signContract = $("#sign-contract");
     var contract = $('#contract').data();
-    
-    
     $signContract.on("click", function () {
         var signee = document.getElementById("signee").value;
         console.log(signee);
         frappe.call({
             method: "erpnext.crm.doctype.contract.contract.accept_contract_terms",
             args: {
+                sign: datapair,
                 signee: signee,
                 contract: contract.contractname,
                 },
