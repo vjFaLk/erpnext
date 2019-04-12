@@ -15,18 +15,34 @@ $sigdiv.jSignature() // inits the jSignature widget.
 // after some doodling...
 $sigdiv.jSignature("reset") // clears the canvas and rerenders the decor on it.
 
-// Getting signature as SVG and rendering the SVG within the browser. 
-// (!!! inline SVG rendering from IMG element does not work in all browsers !!!)
-// this export plugin returns an array of [mimetype, base64-encoded string of SVG of the signature strFokes]
-var datapair = $sigdiv.jSignature("getData", "svgbase64") 
-var i = new Image()
-i.src = "data:" + datapair[0] + "," + datapair[1] 
-$(i).appendTo($("#someelement")) // append the image (SVG) to DOM.
 
-// Getting signature as "base30" data pair
-// array of [mimetype, string of jSIgnature"s custom Base30-compressed format]
-datapair = $sigdiv.jSignature("getData","base30") 
-// reimporting the data into jSignature.
-// import plugins understand data-url-formatted strings like "data:mime;encoding,data"
-$sigdiv.jSignature("setData", "data:" + datapair.join(",")) 
+var datapair = $sigdiv.jSignature("getData") 
+//var i = new Image()
+//i.src = "data:" + datapair[0] + "," + datapair[1] 
+
+//$(i).appendTo($("#someelement")) // append the image (SVG) to DOM.
+
+
+</script>
+
+<button id="sign-contract" type="submit" value="Submit">Submit sign</button> <br>
+<script>
+   
+    var $signContract = $("#sign-contract");
+    
+    $signContract.on("click", function () {
+       frappe.call({
+            method: "erpnext.crm.doctype.contract.contract.accept_sign",
+            args: {
+                sign: datapair,
+                contract: "_Test Customer 2 - 3",
+                },
+            freeze: true,
+		    freeze_message: __("Sharing..."),
+		    callback: function (r) {
+			    frappe.msgprint(__(r))
+				}
+            })
+});
+
 </script>
