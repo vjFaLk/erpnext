@@ -14,38 +14,38 @@
 
     <button id="sign-contract" type="submit" value="Submit">Submit Contract</button> <br>
 
-    {% block contract %}
-        <script type="text/javascript" src="/assets/frappe/js/lib/jquery/jquery.min.js"></script>
-        <script type="text/javascript" src="/assets/frappe/js/frappe/jSignature/libs/jSignature.min.js"></script>
-        <script type="text/javascript">
-            $(document).ready(function() {
-                var $signContract = $("#sign-contract");
-                var contract = $('#contract').data();
+    <script type="text/javascript" src="/assets/frappe/js/lib/jquery/jquery.min.js"></script>
+    <script type="text/javascript" src="/assets/frappe/js/frappe/jSignature/libs/jSignature.min.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function() {
+            var $signContract = $("#sign-contract");
+            var contract = $('#contract').data();
 
-                var $sigdiv = $("#signature")
-                $sigdiv.jSignature();
-                $sigdiv.jSignature("reset")
+            var $sigdiv = $("#signature")
+            $sigdiv.jSignature();
+            $sigdiv.jSignature("reset")
+            
+
+            $signContract.on("click", function () {
                 var datapair = $sigdiv.jSignature("getData") 
-
-                $signContract.on("click", function () {
-                    var signee = document.getElementById("signee").value;
-                    frappe.call({
-                        method: "erpnext.crm.doctype.contract.contract.accept_contract_terms",
-                        args: {
-                            sign: datapair,
-                            signee: signee,
-                            contract: contract.contractname,
-                            },
-                        freeze: true,
-                        freeze_message: __("Sharing..."),
-                        callback: function (r) {
-                            frappe.msgprint(__(r))
-                        }
-                    })
-                });
-            })
-        </script>
-    {% endblock %}
+                var signee = document.getElementById("signee").value;
+                frappe.call({
+                    method: "erpnext.crm.doctype.contract.contract.accept_contract_terms",
+                    args: {
+                        sign: datapair,
+                        signee: signee,
+                        contract: contract.contractname,
+                        },
+                    freeze: true,
+                    freeze_message: __("Sharing..."),
+                    callback: function (r) {
+                        frappe.msgprint(__(r))
+                    }
+                })
+            });
+        })
+    </script>
+    
 
 {% endif %}
 {% endblock %}
