@@ -209,6 +209,15 @@ def accept_contract_terms(signee, contract=None):
 		quotation = frappe.get_doc("Quotation", doc.document_name)
 		make_sales_order(quotation.name)
 
+@frappe.whitelist()
+def accept_sign(sign, contract):
+	try:
+		doc = frappe.get_doc("Contract", contract)
+		doc.signature = sign
+		doc.save()
+		return "Your sign is shared successfully!"
+	except:
+		return "sign storage failed"
 
 def get_status(start_date, end_date):
 	"""
