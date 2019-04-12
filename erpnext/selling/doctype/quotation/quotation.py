@@ -189,9 +189,6 @@ def _make_contract(source_name, target_doc=None, ignore_permissions=False):
 	customer = _make_customer(source_name, ignore_permissions)
 
 	def set_missing_values(source, target):
-	
-		# target.hash = cstr(hash(target.name)).lstrip("-")   # hash returns int
-		# target.hash_generated_on = now_datetime()
 		target.contract_terms = "These are our contract terms"
 		target.document_type = "Quotation"
 		target.document_name = source.name 

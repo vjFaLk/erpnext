@@ -1,7 +1,3 @@
-# -*- coding: utf-8 -*-
-# Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
-# For license information, please see license.txt
-
 from __future__ import unicode_literals
 import json
 import frappe
@@ -21,7 +17,6 @@ class Contract(Document):
 		if self.contract_template:
 			name += " - {} Agreement".format(self.contract_template)
 
-		# If identical, append contract name with the next number in the iteration
 		if frappe.db.exists("Contract", name):
 			count = len(frappe.get_all("Contract", filters={"name": ["like", "%{}%".format(name)]}))
 			name = "{} - {}".format(name, count)
@@ -51,15 +46,8 @@ class Contract(Document):
 			frappe.throw(_("End Date cannot be before Start Date."))
 
 	def on_submit(self):
-		# self.send_contract_email_notification()
 		self.email_contract_link()
-		
 		self.create_sales_invoice()
-		# self.send_sales_invoice_email_notification()
-
-	# def before_submit(self):
-		
-		
 
 	def send_contract_email_notification(self):
 		"""
@@ -67,7 +55,6 @@ class Contract(Document):
 			of contracts
 		"""
 		recipients = ["dikshajadhav11.dj@gmail.com"]
-		# recipients = get_emails_from_role("Contract Manager")
 		
 		if recipients:
 			subject = "Contract Generated"
@@ -83,19 +70,13 @@ class Contract(Document):
 		"""
 
 		recipients = ["diksha@digithinkit.com"]
-		# recipients = get_emails_from_role("Contract Manager")
+		
 
-		# link_to_contract = "http://localhost:8000/contract_generated" + "?token=" + self.hash
-		link_to_contract = "http://localhost:8000/sign" + "?token=" + self.hash
+		link_to_contract = "http://localhost:8000/contract_generated" + "?token=" + self.hash
+		
 		if recipients:
 			subject = "Contract to sign"
-			# message = frappe.render_template("www/contract_generated.html", {
-			# 	"contract": self
-			# })
 			message = link_to_contract
-
-		# TODO : Create fields to store token and token generation time
-		# TODO : Store Hash and current Datetime (checkout frappe/utils/data.py to get time related functions) in Contract
 
 		frappe.sendmail(recipients=recipients, subject=subject, message=message)
 		
@@ -106,7 +87,6 @@ class Contract(Document):
 
 		sales_invoice.update({
 			"customer": self.party_name,
-			# "company": get_default_company(),
 			"company": default_company,
 			"contract": self,
 			"exempt_from_sales_tax": 1,
@@ -115,8 +95,6 @@ class Contract(Document):
 
 		contract_link = get_link_to_form("Contract", self.name)
 
-		# for order, discount in order_discounts.items()
-		# order_link = get_link_to_form("Sales Order", order.name)
 
 		sales_invoice.append("items", {
 			"item_name": "Contract lapse fee",
@@ -146,9 +124,6 @@ class Contract(Document):
 
 		if recipients:
 			subject = "Sales invoice Generated"
-			# message = frappe.render_template("templates/emails/contract_generated.html", {
-			# 	"contract": self
-			# })
 			message = "Sales invoice generated"
 
 		frappe.sendmail(recipients=recipients, subject=subject, message=message)
@@ -186,7 +161,7 @@ class Contract(Document):
 		
 
 @frappe.whitelist()
-def accept_contract_terms(signee, contract=None):
+def accept_contract_terms(sign, signee, contract=None):
 	"""
 	Gets signee: whoever signed the contract, contract: contract name
 
@@ -196,8 +171,8 @@ def accept_contract_terms(signee, contract=None):
 	"""
 	try:
 		doc = frappe.get_doc("Contract", contract)
-		# frappe.db.set_value("Contract", contract , "is_signed", 1, "signee", signee, "signed", "signed_on", now_datetime())
 		doc.is_signed = 1
+		doc.signature = sign
 		doc.signee = signee
 		doc.signed_on = now_datetime()
 		doc.save()
