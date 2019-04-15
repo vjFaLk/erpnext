@@ -15,7 +15,7 @@ form_grid_templates = {
 
 class Quotation(SellingController):
 	def set_indicator(self):
-		if self.docstatus==1:
+		if self.docstatus == 1:
 			self.indicator_color = 'blue'
 			self.indicator_title = 'Submitted'
 		if self.valid_till and getdate(self.valid_till) < getdate(nowdate()):
@@ -62,7 +62,7 @@ class Quotation(SellingController):
 		if self.opportunity:
 			self.update_opportunity_status()
 
-	def update_opportunity_status(self, opportunity=None):
+	def update_opportunity_status(self, opportunity = None):
 		if not opportunity:
 			opportunity = self.opportunity
 
@@ -127,7 +127,7 @@ def make_sales_order(source_name, target_doc=None):
 		frappe.throw(_("Validity period of this quotation has ended."))
 	return _make_sales_order(source_name, target_doc)
 
-def _make_sales_order(source_name, target_doc = None, ignore_permissions=False):
+def _make_sales_order(source_name, target_doc = None, ignore_permissions = False):
 	
 	customer = _make_customer(source_name, ignore_permissions)
 
@@ -193,9 +193,6 @@ def _make_contract(source_name, target_doc=None, ignore_permissions=False):
 		target.document_type = "Quotation"
 		target.document_name = source.name 
 	
-	def update_item(obj, target, source_parent):
-		target.stock_qty = flt(obj.qty) * flt(obj.conversion_factor)
-
 	doclist = get_mapped_doc("Quotation", source_name, {
 			"Quotation": {
 				"doctype": "Contract",

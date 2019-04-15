@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+# Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
+
 from __future__ import unicode_literals
 import json
 import frappe
@@ -29,11 +32,11 @@ class Contract(Document):
 		self.update_fulfilment_status()
 
 	def after_insert(self):
-		self.create_hash()
+		self.generate_token()
 
-	def create_hash(self):
-		self.hash = cstr(hash(self.name)).lstrip("-")
-		self.hash_generated_on = now_datetime()
+	def generate_token(self):
+		self.token = cstr(hash(self.name)).lstrip("-")
+		self.token_generated_on = now_datetime()
 		self.save()
 
 	def before_update_after_submit(self):
@@ -65,16 +68,11 @@ class Contract(Document):
 	
 	def email_contract_link(self):
 		"""
-			Email the contract link to user for him to sign it
+			Email the contract link to user for them to sign it
 		"""
-		recipients = ["diksha@digithinkit.com"]
-		link_to_contract = "http://localhost:8000/contract_generated" + "?token=" + self.hash
+		link_to_contract = "http://localhost:8000/contract_generated" + "?token=" + self.token
 		
-		if recipients:
-			subject = "Contract to sign"
-			message = link_to_contract
-
-		frappe.sendmail(recipients=recipients, subject=subject, message=message)
+		frappe.sendmail(recipients=[self.email], subject="Contract to sign", message=link_to_contract)
 		
 
 	def create_sales_invoice(self):
@@ -171,7 +169,7 @@ def accept_contract_terms(sign, signee, contract=None):
 		doc.signee = signee
 		doc.signed_on = now_datetime()
 		doc.save()
-		return "Your contract is shared successfully!"
+		return "That's it! You have signed this contract!"
 	except:
 		return "couldn't submit signing"
 	finally:
