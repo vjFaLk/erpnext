@@ -16,9 +16,9 @@ def get_context(context):
             requesting_token += cstr(i)
    
     token = cstr(requesting_token)
-    doc = frappe.get_doc("Contract", {"hash" : requesting_token})
+    doc = frappe.get_doc("Contract", {"token" : requesting_token})
     
-    if now_datetime() > add_to_date(doc.hash_generated_on, hours=24):
+    if now_datetime() > add_to_date(doc.token_generated_on, hours=24):
         raise frappe.DoesNotExistError
        
     else:
