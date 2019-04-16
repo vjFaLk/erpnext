@@ -9,7 +9,6 @@
 {% elif contract.is_signed %}
     <h1>Contract already signed</h1>
 {% else %}
-<form>
     Party Name: {{ contract.party_name }} <br>
     Start date: {{ contract.start_date }} <br>
     End date: {{ contract.end_date }} <br>
@@ -18,7 +17,6 @@
     <div id="signature"></div>
 
     <button id="submitBtn" type="submit" value="Submit">Submit Contract</button> <br>
-</form>
 <script type="text/javascript" src="/assets/frappe/js/lib/jquery/jquery.min.js"></script>
 <script type="text/javascript" src="/assets/frappe/js/lib/jSignature.min.js"></script>
 <script type="text/javascript">
@@ -26,13 +24,14 @@
         var $signContract = $("#submitBtn");
         var contract = $('#contract').data();
 
-        var $sigdiv = $("#signature")
-        $sigdiv.jSignature(); 
-        $sigdiv.jSignature("reset")
+        // var $sigdiv = $("#signature")
+        // $sigdiv.jSignature(); 
+        // $sigdiv.jSignature("reset")
 
         $signContract.on("click", function () {
           
-            var sign = $sigdiv.jSignature("getData")
+            // var sign = $sigdiv.jSignature("getData")
+            var sign = "FAKESIGN"
             var signee = document.getElementById("signee").value;
             if (sign && signee){
                 frappe.call({
