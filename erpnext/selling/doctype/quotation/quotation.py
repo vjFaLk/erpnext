@@ -179,20 +179,15 @@ def _make_sales_order(source_name, target_doc = None, ignore_permissions = False
 
 @frappe.whitelist()
 def make_contract(source_name, target_doc=None):
-	
 	quotation = frappe.db.get_value("Quotation", source_name, ["transaction_date", "valid_till"], as_dict = 1)
 	if quotation.valid_till and (quotation.valid_till < quotation.transaction_date or quotation.valid_till < getdate(nowdate())):
 		frappe.throw(_("Validity period of this quotation has ended."))
 	return _make_contract(source_name, target_doc)
 
 def _make_contract(source_name, target_doc=None, ignore_permissions=False):
-	customer = _make_customer(source_name, ignore_permissions)
-
 	def set_missing_values(source, target):
-		target.contract_terms = "These are our contract terms"
 		target.document_type = "Quotation"
-		target.document_name = source.name 
-	
+		target.document_name = source.name
 	doclist = get_mapped_doc("Quotation", source_name, {
 			"Quotation": {
 				"doctype": "Contract",
@@ -200,18 +195,11 @@ def _make_contract(source_name, target_doc=None, ignore_permissions=False):
 					"docstatus": ["=", 1]
 				},
 				"field_map": {
-				# "company": "party_name",
 				"customer": "party_name",
-				"transaction_date": "start_date",
-				"valid_till": "end_date",
-				"document_name": "amended_from"
-				
+				"contact_email": "email"
 			}
 			}
 		}, target_doc, set_missing_values, ignore_permissions=ignore_permissions)
-		
-	# postprocess: fetch shipping address, set missing values
-
 	return doclist
 
 @frappe.whitelist()
