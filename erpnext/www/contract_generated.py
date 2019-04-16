@@ -2,26 +2,18 @@ from __future__ import unicode_literals
 import frappe
 from frappe.utils import cstr, datetime, add_days, now_datetime, time_diff_in_hours, add_to_date
 
-no_cache = 1
-
 def get_context(context):
-    a = frappe.local.request.environ.get("QUERY_STRING")
-    requesting_token = ""
-    count = 0
-    for i in a:
-        if i == "=":
-            count += 1
-            continue
-        elif count == 1:
-            requesting_token += cstr(i)
-   
-    token = cstr(requesting_token)
-    doc = frappe.get_doc("Contract", {"token" : requesting_token})
-    
+    token = frappe.local.request.args.get("token")
+    contract = frappe.db.get_value("Contract", {"token" : token, "docstatus" : 1}, "name")
+
+    if not contract:
+        context.contract = {}
+        return
+
+    doc = frappe.get_doc("Contract", contract)
+
     if now_datetime() > add_to_date(doc.token_generated_on, hours=24):
-        raise frappe.DoesNotExistError
-       
-    else:
-        context.contract = doc
-        
- 
+        context.contract_expired = True
+        return
+
+    context.contract = doc

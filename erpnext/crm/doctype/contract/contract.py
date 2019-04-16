@@ -21,11 +21,12 @@ class Contract(Document):
 			name += " - {} Agreement".format(self.contract_template)
 
 		if frappe.db.exists("Contract", name):
-			count = len(frappe.get_all("Contract", filters={"name": ["like", "%{}%".format(name)]}))
+			count = len(frappe.get_all("Contract", filters={
+						"name": ["like", "%{}%".format(name)]}))
 			name = "{} - {}".format(name, count)
 
 		self.name = _(name)
-		
+
 	def validate(self):
 		self.validate_dates()
 		self.update_contract_status()
@@ -35,7 +36,7 @@ class Contract(Document):
 		self.generate_token()
 
 	def generate_token(self):
-		self.token = cstr(hash(self.name)).lstrip("-")
+		self.token = frappe.generate_hash(self.name, 32)
 		self.token_generated_on = now_datetime()
 		self.save()
 
@@ -49,77 +50,20 @@ class Contract(Document):
 
 	def on_submit(self):
 		self.email_contract_link()
-		self.create_sales_invoice()
 
-	def send_contract_email_notification(self):
-		"""
-			Notify 'Contract Managers' about auto-creation
-			of contracts
-		"""
-		recipients = ["dikshajadhav11.dj@gmail.com"]
-		
-		if recipients:
-			subject = "Contract Generated"
-			message = frappe.render_template("templates/emails/contract_generated.html", {
-				"contract": self
-			})
-
-		frappe.sendmail(recipients=recipients, subject=subject, message=message)
-	
 	def email_contract_link(self):
 		"""
-			Email the contract link to user for them to sign it
+				Email the contract link to user for them to sign it
 		"""
-		link_to_contract = "http://localhost:8000/contract_generated" + "?token=" + self.token
-		
-		frappe.sendmail(recipients=[self.email], subject="Contract to sign", message=link_to_contract)
-		
+		link_to_contract = "http://{0}/contract_generated?token={1}".format(frappe.local.site, self.token)
 
-	def create_sales_invoice(self):
-		sales_invoice = frappe.new_doc("Sales Invoice")
-		default_company = "Synergy Business Management INC."
+		message = frappe.render_template("templates/emails/contract_generated.html", {
+				"contract": self,
+				"link": link_to_contract
+			})
 
-		sales_invoice.update({
-			"customer": self.party_name,
-			"company": default_company,
-			"contract": self,
-			"exempt_from_sales_tax": 1,
-			"due_date": nowdate(),
-		})
-
-		contract_link = get_link_to_form("Contract", self.name)
-
-		sales_invoice.append("items", {
-			"item_name": "Contract lapse fee",
-			"description": "This fee is charged for the non-compliance of Contract {0}".format(contract_link),
-			"qty": 1,
-			"uom": "Nos",
-			"rate": 45,
-			"conversion_factor": 1,
-			# TODO: make income account configurable from the frontend
-			"income_account": frappe.db.get_value("Company", default_company, "default_income_account"),
-			"cost_center": frappe.db.get_value("Company", default_company, "cost_center")
-		})
-
-		sales_invoice.set_missing_values()
-		sales_invoice.insert()
-
-		return sales_invoice
-
-
-	def send_sales_invoice_email_notification(self):
-		"""
-			Notify 'Contract Managers' about auto-creation
-			of sales invoice
-		"""
-		recipients = ["dikshajadhav11.dj@gmail.com"]
-		# recipients = get_emails_from_role("Contract Manager")
-
-		if recipients:
-			subject = "Sales invoice Generated"
-			message = "Sales invoice generated"
-
-		frappe.sendmail(recipients=recipients, subject=subject, message=message)
+		frappe.sendmail(
+			recipients=[self.email], subject="A Contract has been generated for you", message=message)
 
 	def update_contract_status(self):
 		if self.is_signed:
@@ -151,10 +95,10 @@ class Contract(Document):
 
 	def get_fulfilment_progress(self):
 		return len([term for term in self.fulfilment_terms if term.fulfilled])
-		
 
-@frappe.whitelist()
-def accept_contract_terms(sign, signee, contract=None):
+
+@frappe.whitelist(allow_guest=True)
+def sign_contract(sign, signee, contract, token):
 	"""
 	Gets signee: whoever signed the contract, contract: contract name
 
@@ -162,41 +106,31 @@ def accept_contract_terms(sign, signee, contract=None):
 
 	returns relevant message
 	"""
-	try:
-		doc = frappe.get_doc("Contract", contract)
-		doc.is_signed = 1
-		doc.signature = sign
-		doc.signee = signee
-		doc.signed_on = now_datetime()
-		doc.save()
-		return "That's it! You have signed this contract!"
-	except:
-		return "couldn't submit signing"
-	finally:
-		doc = frappe.get_doc("Contract", contract)
-		quotation = frappe.get_doc("Quotation", doc.document_name)
-		make_sales_order(quotation.name)
+	doc = frappe.get_doc("Contract", contract)
 
-@frappe.whitelist()
-def accept_sign(sign, contract):
-	try:
-		doc = frappe.get_doc("Contract", contract)
-		doc.signature = sign
-		doc.save()
-		return "Your sign is shared successfully!"
-	except:
-		return "sign storage failed"
+	if not doc.token == token:
+		frappe.throw("Invalid Token for Contract")
+
+	if doc.is_signed:
+		frappe.throw("Contract already signed")
+
+	doc.is_signed = 1
+	doc.signature = sign
+	doc.signee = signee
+	doc.signed_on = now_datetime()
+	doc.save(ignore_permissions=1)
+
 
 def get_status(start_date, end_date):
 	"""
 	Get a Contract's status based on the start, current and end dates
 
 	Args:
-		start_date (str): The start date of the contract
-		end_date (str): The end date of the contract
+			start_date (str): The start date of the contract
+			end_date (str): The end date of the contract
 
 	Returns:
-		str: 'Active' if within range, otherwise 'Inactive'
+			str: 'Active' if within range, otherwise 'Inactive'
 	"""
 
 	if not end_date:
@@ -216,9 +150,9 @@ def update_status_for_contracts():
 	"""
 
 	contracts = frappe.get_all("Contract",
-								filters={"is_signed": True,
+							   filters={"is_signed": True,
 										"docstatus": 1},
-								fields=["name", "start_date", "end_date"])
+							   fields=["name", "start_date", "end_date"])
 
 	for contract in contracts:
 		status = get_status(contract.get("start_date"),
