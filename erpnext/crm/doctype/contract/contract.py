@@ -55,8 +55,8 @@ class Contract(Document):
 		"""
 				Email the contract link to user for them to sign it
 		"""
-		link_to_contract = "http://{0}/contract_generated?token={1}".format(frappe.local.site, self.token)
-
+		# link_to_contract = "http://{0}/contract_generated?token={1}".format(frappe.local.site, self.token)
+		link_to_contract = "http://localhost:8000/contract_generated?token=" + self.token
 		message = frappe.render_template("templates/emails/contract_generated.html", {
 				"contract": self,
 				"link": link_to_contract
