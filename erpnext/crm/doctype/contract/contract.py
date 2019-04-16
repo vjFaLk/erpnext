@@ -2,15 +2,14 @@
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 
 from __future__ import unicode_literals
+
 import json
+
 import frappe
 from frappe import _
-from erpnext import get_default_company
-from frappe.model.document import Document
 from frappe.core.doctype.role.role import get_emails_from_role
-from frappe.model.mapper import get_mapped_doc
-from erpnext.selling.doctype.quotation.quotation import make_sales_order
-from frappe.utils import getdate, now_datetime, nowdate, get_link_to_form, cstr, datetime
+from frappe.model.document import Document
+from frappe.utils import getdate, now_datetime, nowdate
 
 
 class Contract(Document):
@@ -21,8 +20,8 @@ class Contract(Document):
 			name += " - {} Agreement".format(self.contract_template)
 
 		if frappe.db.exists("Contract", name):
-			count = len(frappe.get_all("Contract", filters={
-						"name": ["like", "%{}%".format(name)]}))
+			count = len(frappe.get_all("Contract",
+				filters={"name": ["like", "%{}%".format(name)]}))
 			name = "{} - {}".format(name, count)
 
 		self.name = _(name)
@@ -53,18 +52,17 @@ class Contract(Document):
 
 	def email_contract_link(self):
 		"""
-				Email the contract link to user for them to sign it
+			Email the contract link to user for them to sign it
 		"""
 		link_to_contract = "http://{0}/sign_contract?token={1}".format(frappe.local.site, self.token)
 		self.contract_link = link_to_contract
 
 		message = frappe.render_template("templates/emails/contract_generated.html", {
-				"contract": self,
-				"link": link_to_contract
-			})
+			"contract": self,
+			"link": link_to_contract
+		})
 
-		frappe.sendmail(
-			recipients=[self.email], subject="A Contract has been generated for you", message=message)
+		frappe.sendmail(recipients=[self.email], subject="A Contract has been generated for you", message=message)
 
 		frappe.msgprint("Contract has been successfully sent to Email")
 
@@ -103,11 +101,11 @@ class Contract(Document):
 @frappe.whitelist(allow_guest=True)
 def sign_contract(sign, signee, contract, token):
 	"""
-	Gets signee: whoever signed the contract, contract: contract name
+		Gets signee: whoever signed the contract, contract: contract name
 
-	updates is_signed, signee and signed_on field in db
+		updates is_signed, signee and signed_on field in db
 
-	returns relevant message
+		returns relevant message
 	"""
 	doc = frappe.get_doc("Contract", contract)
 
@@ -140,11 +138,11 @@ def get_status(start_date, end_date):
 	Get a Contract's status based on the start, current and end dates
 
 	Args:
-			start_date (str): The start date of the contract
-			end_date (str): The end date of the contract
+		start_date (str): The start date of the contract
+		end_date (str): The end date of the contract
 
 	Returns:
-			str: 'Active' if within range, otherwise 'Inactive'
+		str: 'Active' if within range, otherwise 'Inactive'
 	"""
 
 	if not end_date:
@@ -159,17 +157,14 @@ def get_status(start_date, end_date):
 
 def update_status_for_contracts():
 	"""
-	Run the daily hook to update the statuses for all signed
-	and submitted Contracts
+		Run the daily hook to update the statuses for all signed
+		and submitted Contracts
 	"""
 
 	contracts = frappe.get_all("Contract",
-							   filters={"is_signed": True,
-										"docstatus": 1},
-							   fields=["name", "start_date", "end_date"])
+		filters={"is_signed": True, "docstatus": 1},
+		fields=["name", "start_date", "end_date"])
 
 	for contract in contracts:
-		status = get_status(contract.get("start_date"),
-							contract.get("end_date"))
-
+		status = get_status(contract.get("start_date"), contract.get("end_date"))
 		frappe.db.set_value("Contract", contract.get("name"), "status", status)

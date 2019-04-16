@@ -6,13 +6,61 @@ from __future__ import unicode_literals
 import unittest
 
 import frappe
+from erpnext.crm.doctype.contract.contract import sign_contract
 from frappe.utils import add_days, nowdate
 
-class TestContract(unittest.TestCase):
 
+class TestContract(unittest.TestCase):
 	def setUp(self):
 		frappe.db.sql("delete from `tabContract`")
+
 		self.contract_doc = get_contract()
+		self.sign_args = {
+			"sign": "EXAMPLE SIGN",
+			"signee": "SIGNEE NAME"
+		}
+
+	def test_contract_sign_invalid_token(self):
+		self.contract_doc.insert()
+
+		self.sign_args.update({
+			"contract": self.contract_doc.name,
+			"token": "INVALID TOKEN"
+		})
+
+		self.assertRaises(frappe.ValidationError, sign_contract, **self.sign_args)
+
+	def test_contract_sign_success(self):
+		self.contract_doc.insert()
+
+		self.sign_args.update({
+			"contract": self.contract_doc.name,
+			"token": self.contract_doc.token
+		})
+
+		sign_contract(**self.sign_args)
+
+		self.contract_doc.load_from_db()
+		self.assertEqual(self.contract_doc.is_signed, 1)
+
+	def test_contract_sign_with_existing_sign(self):
+		self.contract_doc.insert()
+
+		self.sign_args.update({
+			"contract": self.contract_doc.name,
+			"token": self.contract_doc.token
+		})
+
+		sign_contract(**self.sign_args)
+		self.assertRaises(frappe.ValidationError, sign_contract, **self.sign_args)
+
+	def test_token_generation(self):
+		self.assertEqual(self.contract_doc.token, None)
+		self.assertEqual(self.contract_doc.token_generated_on, None)
+
+		self.contract_doc.insert()
+		self.assertNotEqual(self.contract_doc.token, None)
+		self.assertNotEqual(self.contract_doc.token_generated_on, None)
 
 	def test_validate_start_date_before_end_date(self):
 		self.contract_doc.start_date = nowdate()
@@ -111,9 +159,11 @@ class TestContract(unittest.TestCase):
 
 		self.assertEqual(self.contract_doc.fulfilment_status, "Lapsed")
 
+
 def get_contract():
 	doc = frappe.new_doc("Contract")
 	doc.party_type = "Customer"
 	doc.party_name = "_Test Customer"
 	doc.contract_terms = "This is a test customer contract."
+	doc.email = "test@example.com"
 	return doc
