@@ -1,9 +1,9 @@
-frappe.ready(function () {
+$(document).ready(function () {
     var $signContract = $("#submitBtn");
     var contract = $('#contract').data();
 
     var $sigdiv = $("#signature")
-    $sigdiv.jSignature(); 
+    $sigdiv.jSignature();
     $sigdiv.jSignature("reset")
 
     $signContract.on("click", function () {
@@ -21,7 +21,7 @@ frappe.ready(function () {
                 freeze: true,
                 callback: function (r) {
                     if (!r.exc) {
-                        frappe.msgprint("Contract successfully signed")
+                        location.reload(forcedReload=true);
                     }
                     else {
                         frappe.msgprint(r.exc)
