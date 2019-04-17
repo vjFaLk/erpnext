@@ -1,6 +1,6 @@
 {% extends "templates/web.html" %}
 {% block page_content %}
-{% block title %} Your Contract {% endblock %}
+{% block title %} Your Contract <br> {% endblock %}
 
 {% if contract_expired %}
     <h1>Contract link has expired. Press this button to receive an email with a new link</h1>
@@ -8,7 +8,7 @@
 {% elif not contract %}
     <h1>Contract not found</h1>
 {% elif contract.is_signed %}
-    <h1>Contract already signed</h1>
+    <h1>You have successfully signed your Contract!</h1>
 {% else %}
     Party Name: {{ contract.party_name }} <br>
     Start date: {{ contract.start_date }} <br>
