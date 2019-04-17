@@ -12,7 +12,7 @@ def get_context(context):
 
     doc = frappe.get_doc("Contract", contract)
 
-    if now_datetime() > add_to_date(doc.token_generated_on, hours=24):
+    if now_datetime() > add_to_date(doc.token_generated_on, hours=72):
         context.contract_expired = True
         return
 
