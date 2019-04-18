@@ -123,6 +123,17 @@ def sign_contract(sign, signee, contract, token):
 	doc.signed_on = now_datetime()
 	doc.save(ignore_permissions=1)
 
+@frappe.whitelist(allow_guest=True)
+def reset_token(contract_name, email):
+	contract = frappe.get_doc("Contract", contract_name)
+	
+	if not contract.email == email:
+		frappe.throw("Invalid Email")
+
+	contract.generate_token()
+	contract.email_contract_link()
+	frappe.db.commit()
+
 
 def get_status(start_date, end_date):
 	"""

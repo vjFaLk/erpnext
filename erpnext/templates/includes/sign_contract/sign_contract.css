@@ -1,0 +1,21 @@
+.data-box {
+    padding:50px 60px; 
+    margin-top:2px;
+}
+
+.nav { border: None; }
+
+.modal-backdrop.show { display: none; }
+
+.nav-item a.nav-link.not-visited { background: #007bff54; }
+
+button.close {
+    float: none;
+    position: absolute;
+    top: 0;
+    right: 0;
+}
+
+.jSignature {
+    min-height: 150px !important;
+}

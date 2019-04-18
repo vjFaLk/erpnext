@@ -8,6 +8,7 @@ def get_context(context):
     token = frappe.local.request.args.get("token")
     contract = frappe.db.get_value("Contract", {"token" : token, "docstatus" : 1}, "name")
 
+
     if not contract:
         context.contract = {}
         return
@@ -16,6 +17,5 @@ def get_context(context):
 
     if now_datetime() > add_to_date(doc.token_generated_on, hours=72):
         context.contract_expired = True
-        return
 
     context.contract = doc
