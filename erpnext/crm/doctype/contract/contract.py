@@ -56,6 +56,7 @@ class Contract(Document):
 				Email the contract link to user for them to sign it
 		"""
 		link_to_contract = "http://{0}/sign_contract?token={1}".format(frappe.local.site, self.token)
+		self.contract_link = link_to_contract
 
 		message = frappe.render_template("templates/emails/contract_generated.html", {
 				"contract": self,
@@ -64,6 +65,8 @@ class Contract(Document):
 
 		frappe.sendmail(
 			recipients=[self.email], subject="A Contract has been generated for you", message=message)
+
+		frappe.msgprint("Contract has been successfully sent to Email")
 
 	def update_contract_status(self):
 		if self.is_signed:
