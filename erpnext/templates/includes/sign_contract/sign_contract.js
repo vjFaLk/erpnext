@@ -43,8 +43,6 @@ $(document).ready(function () {
     });
 
     $("#step2").on("click", function () {
-
-        
         var sign = $sigdiv.jSignature("getData");
         var signee = document.getElementById("signee").value;
 
