@@ -1,0 +1,63 @@
+{% extends "templates/web.html" %}
+{% block page_content %}
+
+{% if contract_expired %}
+    <h1>Contract link has expired. Press this button to receive an email with a new link</h1>
+    <button id="renew-link" type="submit" value="renew-link">Send Email</button>
+{% elif not contract %}
+    <h1>Contract not found</h1>
+{% elif contract.is_signed %}
+    <h1>Contract already signed</h1>
+{% else %}
+<form>
+    Party Name: {{ contract.party_name }} <br>
+    Start date: {{ contract.start_date }} <br>
+    End date: {{ contract.end_date }} <br>
+    Signee name: <input type="text" id="signee" value="" data-signee="{{ contract.signee }}" required/> <br><br>
+    <div id="contract" data-contractname="{{contract.name}}"></div>
+    <div id="signature"></div>
+
+    <button id="submitBtn" type="submit" value="Submit">Submit Contract</button> <br>
+</form>
+<script type="text/javascript" src="/assets/frappe/js/lib/jquery/jquery.min.js"></script>
+<script type="text/javascript" src="/assets/frappe/js/lib/jSignature.min.js"></script>
+<script type="text/javascript">
+    $(document).ready(function () {
+        var $signContract = $("#submitBtn");
+        var contract = $('#contract').data();
+
+        var $sigdiv = $("#signature")
+        $sigdiv.jSignature(); 
+        $sigdiv.jSignature("reset")
+
+        $signContract.on("click", function () {
+          
+            var sign = $sigdiv.jSignature("getData")
+            var signee = document.getElementById("signee").value;
+            if (sign && signee){
+                frappe.call({
+                    method: "erpnext.crm.doctype.contract.contract.sign_contract",
+                    args: {
+                        signee: signee,
+                        contract: contract.contractname,
+                        sign: sign,
+                        token: "{{ contract.token }}"
+                    },
+                    freeze: true,
+                    callback: function (r) {
+                        if (!r.exc) {
+                            frappe.msgprint("Contract successfully signed")
+                        }
+                        else {
+                            frappe.msgprint(r.exc)
+                        }
+                    }
+                })
+            }
+        });
+    })
+</script>
+
+
+{% endif %}
+{% endblock %}
