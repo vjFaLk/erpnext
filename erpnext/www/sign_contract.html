@@ -1,0 +1,86 @@
+{% extends "templates/web.html" %}
+{% block title %} Your Contract {% endblock %}
+
+{% block page_content %}
+
+{% block style %}
+<style>
+	{% include "templates/includes/sign_contract/sign_contract.css" %}
+</style>
+{% endblock %}
+
+{% if contract_expired %}
+    <h1>Contract link has expired. Press this button to receive an email with a new link</h1>
+    <button id="renewButton" class="btn btn-primary" type="submit" value="Submit">Send Email</button>
+{% elif not contract %}
+    <h1>Contract not found</h1>
+{% elif contract.is_signed %}
+    <h1>You have successfully signed your Contract!</h1>
+{% else %}
+    <div class="container">
+      <div class="row">
+        
+
+        <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12 col-xl-12">
+        	<br />
+        	
+        	<ul class="nav nav-tabs">
+        		<li class="nav-item">
+        			<a class="nav-link active about btn-primary" role="tab" data-toggle="tab">ABOUT</a>
+        		</li>
+
+        		<li class="nav-item">
+        			<a class="nav-link review-sign btn-primary not-visited" role="tab" data-toggle="tab">REVIEW AND SIGN</a>
+        		</li>
+
+        		<li class="nav-item">
+        			<a class="nav-link confirmation btn-primary not-visited" role="tab" data-toggle="tab">CONFIRMATION</a>
+        		</li>
+       	 
+        		
+        	</ul>
+        
+        	<div class="tab-content">
+        		<div role="tabpanel" class="tab-pane fade in active shadow-sm data-box show" id="about">
+        			<h3>Bloomstack Corp. has requested that you sign a Nondisclosure Agreement.</h3>
+        			<br>
+        			<h5>This Nondisclosure Agreement (NDA) requires that any confidential information that Bloomstack Corp. and {{ contract.party_name }} disclose to each other be kept private.</h5><br>
+        			<a class="btn btn-primary" id="step1">Continue</a>
+        		</div>
+
+        		<div role="tabpanel" class="tab-pane fade shadow-sm data-box" id="review">
+        			<h3 class="text-center">Mutual Nondisclosure Agreement</h3><br>
+                    <p>{{ contract.contract_terms }}</p>
+                    <p>Start date: {{ contract.start_date }} </p><br>
+                    <p>End date: {{ contract.end_date }} </p><br>
+        			Signee name: <input type="text" id="signee" value="" data-signee="{{ contract.signee }}" required/> <br>
+                                <div id="signature"></div>
+                              <a href="#confirm" class="btn btn-primary" data-toggle="modal" id="step2">Sign document</a>
+							<!--<a href="#review" class="btn btn-primary" data-toggle="modal">Continue</a>-->
+        		</div>
+
+
+        		<div role="tabpanel" class="tab-pane fade shadow-sm data-box" id="confirm">
+        			<h3>That's it! You've successfully signed your contract</h3><br>
+        		</div>
+        	</div>
+        </div>
+         </div>
+    </div>
+
+
+  <!--  Party Name: {{ contract.party_name }} <br>
+    Start date: {{ contract.start_date }} <br>
+    End date: {{ contract.end_date }} <br>
+    Signee name: <input type="text" id="signee" value="" data-signee="{{ contract.signee }}" required/> <br><br>
+    <div id="signature"></div>
+
+    <button id="submitBtn" type="submit" value="Submit">Submit Contract</button> <br> -->
+{% endif %}
+
+{% endblock %}
+
+{% block script %}
+<script type="text/javascript" src="/assets/frappe/js/lib/jSignature.min.js"></script>
+<script>{% include "templates/includes/sign_contract/sign_contract.js" %}</script>
+{% endblock %}

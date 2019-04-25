@@ -6,7 +6,7 @@ import frappe
 from frappe.model.mapper import get_mapped_doc
 from frappe.utils import flt, nowdate, getdate
 from frappe import _
-
+from frappe.utils import cstr, now_datetime
 from erpnext.controllers.selling_controller import SellingController
 
 form_grid_templates = {
@@ -15,7 +15,7 @@ form_grid_templates = {
 
 class Quotation(SellingController):
 	def set_indicator(self):
-		if self.docstatus==1:
+		if self.docstatus == 1:
 			self.indicator_color = 'blue'
 			self.indicator_title = 'Submitted'
 		if self.valid_till and getdate(self.valid_till) < getdate(nowdate()):
@@ -62,7 +62,7 @@ class Quotation(SellingController):
 		if self.opportunity:
 			self.update_opportunity_status()
 
-	def update_opportunity_status(self, opportunity=None):
+	def update_opportunity_status(self, opportunity = None):
 		if not opportunity:
 			opportunity = self.opportunity
 
@@ -120,18 +120,26 @@ def get_list_context(context=None):
 
 @frappe.whitelist()
 def make_sales_order(source_name, target_doc=None):
+	
 	quotation = frappe.db.get_value("Quotation", source_name, ["transaction_date", "valid_till"], as_dict = 1)
+	
 	if quotation.valid_till and (quotation.valid_till < quotation.transaction_date or quotation.valid_till < getdate(nowdate())):
 		frappe.throw(_("Validity period of this quotation has ended."))
 	return _make_sales_order(source_name, target_doc)
 
-def _make_sales_order(source_name, target_doc=None, ignore_permissions=False):
+def _make_sales_order(source_name, target_doc = None, ignore_permissions = False):
+	
 	customer = _make_customer(source_name, ignore_permissions)
 
 	def set_missing_values(source, target):
 		if customer:
 			target.customer = customer.name
 			target.customer_name = customer.customer_name
+
+		
+		target.set_warehouse = frappe.db.get_single_value("Stock Settings", "default_warehouse")
+	
+		target.delivery_date = now_datetime()
 		target.ignore_pricing_rule = 1
 		target.flags.ignore_permissions = ignore_permissions
 		target.run_method("set_missing_values")
@@ -161,11 +169,37 @@ def _make_sales_order(source_name, target_doc=None, ignore_permissions=False):
 			"Sales Team": {
 				"doctype": "Sales Team",
 				"add_if_empty": True
-			}
+			},
+
 		}, target_doc, set_missing_values, ignore_permissions=ignore_permissions)
 
 	# postprocess: fetch shipping address, set missing values
+	doclist.save()
+	return doclist
 
+@frappe.whitelist()
+def make_contract(source_name, target_doc=None):
+	quotation = frappe.db.get_value("Quotation", source_name, ["transaction_date", "valid_till"], as_dict = 1)
+	if quotation.valid_till and (quotation.valid_till < quotation.transaction_date or quotation.valid_till < getdate(nowdate())):
+		frappe.throw(_("Validity period of this quotation has ended."))
+	return _make_contract(source_name, target_doc)
+
+def _make_contract(source_name, target_doc=None, ignore_permissions=False):
+	def set_missing_values(source, target):
+		target.document_type = "Quotation"
+		target.document_name = source.name
+	doclist = get_mapped_doc("Quotation", source_name, {
+			"Quotation": {
+				"doctype": "Contract",
+				"validation": {
+					"docstatus": ["=", 1]
+				},
+				"field_map": {
+				"customer": "party_name",
+				"contact_email": "email"
+			}
+			}
+		}, target_doc, set_missing_values, ignore_permissions=ignore_permissions)
 	return doclist
 
 @frappe.whitelist()
