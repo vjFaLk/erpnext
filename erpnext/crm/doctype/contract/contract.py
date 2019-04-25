@@ -124,10 +124,10 @@ def sign_contract(sign, signee, contract, token):
 @frappe.whitelist(allow_guest=True)
 def reset_token(contract_name, email):
 	contract = frappe.get_doc("Contract", contract_name)
-	
 	if not contract.email == email:
 		frappe.throw("Invalid Email")
 
+	contract.flags.ignore_permissions = True
 	contract.generate_token()
 	contract.email_contract_link()
 	frappe.db.commit()

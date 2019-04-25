@@ -11,7 +11,7 @@
 
 {% if contract_expired %}
     <h1>Contract link has expired. Press this button to receive an email with a new link</h1>
-    <button id="renewButton" type="submit" value="Submit">Send Email</button>
+    <button id="renewButton" class="btn btn-primary" type="submit" value="Submit">Send Email</button>
 {% elif not contract %}
     <h1>Contract not found</h1>
 {% elif contract.is_signed %}
