@@ -1292,7 +1292,7 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 					if(!r.exc) {
 						me.frm.set_value("taxes", r.message);
 
-						if (me.frm.doc.shipping_rule) {
+						if(me.frm.doc.shipping_rule) {
 							me.frm.script_manager.trigger("shipping_rule");
 						} else {
 							me.calculate_taxes_and_totals();
