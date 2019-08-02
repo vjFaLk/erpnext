@@ -264,7 +264,7 @@ def get_batches(item_code, warehouse, qty=1, as_dict=True):
 			sle.item_code = %s
 				AND sle.warehouse = %s
 				AND batch.disabled = 0
-				AND (batch.expiry_date >= CURDATE() or batch.expiry_date IS NULL)
+				AND (batch.expiry_date >= %s or batch.expiry_date IS NULL)
 		GROUP BY
 			batch_id
 		HAVING
@@ -273,7 +273,7 @@ def get_batches(item_code, warehouse, qty=1, as_dict=True):
 			batch.expiry_date ASC,
 			batch.creation ASC
 		""",
-		(item_code, warehouse, qty),
+		(item_code, warehouse, str(frappe.flags.current_date), qty),
 		as_dict=as_dict
 	)
 
