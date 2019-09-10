@@ -68,6 +68,14 @@ $.extend(erpnext, {
 						"options": "Serial No",
 						"label": __("Serial No"),
 						"get_query": function () {
+							// if (cur_frm && cur_frm.doc.doctype == "Stock Entry") {
+							// 	if (cur_frm.doc.purpose == "Material Issue") {
+
+							// 	} else if (cur_frm.doc.purpose == "Material Receipt") {
+
+							// 	}
+							// }
+
 							return {
 								filters: {
 									item_code: grid_row.doc.item_code,

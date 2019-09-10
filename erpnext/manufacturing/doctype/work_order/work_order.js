@@ -80,8 +80,15 @@ frappe.ui.form.on("Work Order", {
 		});
 
 		// formatter for work order operation
-		frm.set_indicator_formatter('operation',
-			function(doc) { return (frm.doc.qty==doc.completed_qty) ? "green" : "orange" });
+		frm.set_indicator_formatter('operation', (doc) => {
+			if (doc.status == "Pending") {
+				return "red"
+			} else if (doc.status == "Work in Progress") {
+				return "orange"
+			} else if (doc.status == "Completed") {
+				return "green"
+			}
+		});
 	},
 
 	onload: function(frm) {
@@ -372,6 +379,11 @@ frappe.ui.form.on("Work Order", {
 				}
 			});
 		}
+	},
+
+	additional_operating_cost: function(frm) {
+		erpnext.work_order.calculate_cost(frm.doc);
+		erpnext.work_order.calculate_total_cost(frm);
 	}
 });
 
@@ -508,8 +520,7 @@ erpnext.work_order = {
 	},
 
 	calculate_total_cost: function(frm) {
-		var variable_cost = frm.doc.actual_operating_cost ?
-			flt(frm.doc.actual_operating_cost) : flt(frm.doc.planned_operating_cost)
+		let variable_cost = flt(frm.doc.actual_operating_cost) || flt(frm.doc.planned_operating_cost);
 		frm.set_value("total_operating_cost", (flt(frm.doc.additional_operating_cost) + variable_cost))
 	},
 
