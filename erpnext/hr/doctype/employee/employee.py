@@ -158,7 +158,7 @@ class Employee(NestedSet):
 		if self.status == 'Left':
 			reports_to = frappe.db.get_all('Employee',
 				filters={'reports_to': self.name, 'status': "Active"},
-				fields=['name','employee_name']
+				fields = ['name','employee_name']
 			)
 			if reports_to:
 				link_to_employees = [frappe.utils.get_link_to_form('Employee', employee.name, label=employee.employee_name) for employee in reports_to]

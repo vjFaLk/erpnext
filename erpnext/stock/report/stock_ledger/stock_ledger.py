@@ -21,6 +21,8 @@ def execute(filters=None):
 	if opening_row:
 		data.append(opening_row)
 
+	actual_qty = stock_value = 0
+
 	for sle in sl_entries:
 		item_detail = item_details[sle.item_code]
 
